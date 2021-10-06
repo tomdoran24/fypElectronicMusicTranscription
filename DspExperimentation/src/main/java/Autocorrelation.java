@@ -15,7 +15,7 @@ public class Autocorrelation {
         List<Double> autocorrelation = new ArrayList<>();
         PearsonsCorrelation pearsonsCorrelation = new PearsonsCorrelation();
 
-        int windowSize = 2750;        // replace me with calculated size
+        int windowSize = 3000;        // replace me with calculated size
 
         // for all shift values
         for(int i = 0; i<windowSize; i++) {

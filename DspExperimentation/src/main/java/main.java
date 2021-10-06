@@ -23,16 +23,20 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException {
 
         Generate gp = new Generate(0, 1, 44000);
-        double[] signalArraySineWave = gp.generateSineWave(392);
+        double[] signalArraySineWave = gp.generateSineWave(440);
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/piano tone.wav");
+        File file = new File("/Users/tomdoran/Desktop/sine_tone.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
-
         List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(WavUtilities.signalListToArray(WavUtilities.getWavSignalListFromFile(file)));
-        GraphSignals.createWorkbooks(autocorrelationResult,null);
-    
+        int distanceBetweenFirstTwoPeaks = calculatePeakDistance(autocorrelationResult);
+        Note note = findByFreq(distanceBetweenFirstTwoPeaks);
+        System.out.println(note.getValue());
+    }
+
+    private static int calculatePeakDistance(List<Double> autocorrelationResult) {
+        return 100;
     }
 
     private static Note findByFreq(double freq) {
