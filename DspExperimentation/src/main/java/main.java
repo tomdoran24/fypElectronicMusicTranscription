@@ -1,22 +1,10 @@
 import com.github.psambit9791.jdsp.signal.Generate;
-import com.github.psambit9791.wavfile.WavFile;
 import com.github.psambit9791.wavfile.WavFileException;
 
-import javax.sound.midi.ShortMessage;
 import javax.sound.sampled.*;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.*;
-import org.apache.poi.*;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
 
 public class main {
 
@@ -26,25 +14,102 @@ public class main {
         double[] signalArraySineWave = gp.generateSineWave(440);
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/sine_tone.wav");
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_440.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
+        double samplingFreq = audioStream.getFormat().getSampleRate();
+        double samplingPeriod = 1 / samplingFreq;
+
+        //List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(signalArraySineWave);
         List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(WavUtilities.signalListToArray(WavUtilities.getWavSignalListFromFile(file)));
-        int distanceBetweenFirstTwoPeaks = calculatePeakDistance(autocorrelationResult);
-        Note note = findByFreq(distanceBetweenFirstTwoPeaks);
-        System.out.println(note.getValue());
+        //GraphSignals.createWorkbooks(autocorrelationResult, null);
+
+        List<Double> autocorrelationResultPruned = pruneAutocorrelationResult(autocorrelationResult);
+        int distanceBetweenFirstTwoPeaks = calculatePeakDistance(autocorrelationResultPruned);
+
+        System.out.println(periodToFrequency(distanceBetweenFirstTwoPeaks, samplingPeriod));
+    }
+
+
+
+    private static double periodToFrequency(int periodInSamples, double samplingPeriod) {
+        double period = periodInSamples * samplingPeriod;
+        double freq = 1 / period;
+        return freq;
     }
 
     private static int calculatePeakDistance(List<Double> autocorrelationResult) {
-        return 100;
+        // calculate distance between first & last peak in autocorrelation
+        // 1st peak will always be 0 (perfect correlation)
+        int inc = 1;
+        // while correlation is decreasing walk through the array
+        while(correlationDecreasing(autocorrelationResult.get(inc), autocorrelationResult.get(inc-1))) {
+            if(inc == autocorrelationResult.size()-1) {
+                break;
+            }
+            inc++;
+        }
+        // when starts to increase/level out we are approaching another peak - so now just walk until not increasing
+        while(!correlationDecreasing(autocorrelationResult.get(inc), autocorrelationResult.get(inc-1))) {
+            if(inc == autocorrelationResult.size()-1) {
+                break;
+            }
+            inc++;
+        }
+        // inc-1 will now be equal to the distance between the first 2 peaks
+        return inc-1;
     }
 
-    private static Note findByFreq(double freq) {
-        for(Note note : Note.values()) {
-            if(freq % note.getFreq() == 0) {
-                return note;
+    private static int calculatePeakDistance(List<Double> autocorrelationResult, int lookahead) {
+        // calculate distance between first & last peak in autocorrelation
+        // 1st peak will always be 0 (perfect correlation)
+        int inc = 1;
+        // while correlation is decreasing walk through the array
+
+        while(correlationDecreasingOnAverageWithLookahead(autocorrelationResult.subList(inc, lookahead))) {
+
+            if(inc == autocorrelationResult.size()-lookahead) {
+                break;
+            }
+            inc++;
+        }
+        while(!correlationDecreasingOnAverageWithLookahead(autocorrelationResult.subList(inc, lookahead))) {
+
+            if(inc == autocorrelationResult.size()-lookahead) {
+                break;
+            }
+            inc++;
+        }
+        // inc-1 will now be equal to the distance between the first 2 peaks
+        return inc-1;
+    }
+
+    private static boolean correlationDecreasing(Double n, Double nMinus1) {
+        if(n < nMinus1) {
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean correlationDecreasingOnAverageWithLookahead(List<Double> autocorrelationSubArray) {
+        // get highest value
+        Double topValue = autocorrelationSubArray.get(0) > autocorrelationSubArray.get(1) ? autocorrelationSubArray.get(0) : autocorrelationSubArray.get(1);
+        // iterate through remaining sub array to see if value generally stays up or down
+        int valuesAbove = 0;
+        int valuesBelow = 0;
+        for(int i = 2; i < autocorrelationSubArray.size(); i++) {
+            if(autocorrelationSubArray.get(i) > topValue) {
+                valuesAbove++;
+            } else {
+                valuesBelow++;
             }
         }
-        return null;
+        // if there are equal or more values above, correlation is levelling out
+        return valuesBelow > valuesAbove;
+    }
+
+    private static List<Double> pruneAutocorrelationResult(List<Double> autocorrelationResult) {
+        autocorrelationResult.removeIf(entry -> autocorrelationResult.indexOf(entry) % 2 != 0);
+        return autocorrelationResult;
     }
 }
