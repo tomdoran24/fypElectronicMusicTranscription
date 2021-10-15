@@ -8,13 +8,15 @@ import java.util.List;
 
 public class WavUtilities {
 
-    public static List<Double> getWavSignalListFromFile(File file) throws IOException, WavFileException {
+    public static double[][] getWavSignalListFromFile(File file) throws IOException, WavFileException {
         // http://www.labbookpages.co.uk/audio/javaWavFiles.html
         WavFile wavFile = WavFile.openWavFile(file);
 
         // Create a buffer of 100 frames
         double[] buffer = new double[100 * wavFile.getNumChannels()];
-        ArrayList<Double> audios = new ArrayList<>();
+        ArrayList<Double> channelOneArray = new ArrayList<>();
+        ArrayList<Double> channelTwoArray = new ArrayList<>();
+
         int framesRead;
 
         do
@@ -22,11 +24,13 @@ public class WavUtilities {
             // Read frames into buffer
             framesRead = wavFile.readFrames(buffer, 100);
 
-            // Loop through frames and look for minimum and maximum value
-            for(int i = 0; i < buffer.length; i++) {
-                // avoid adding duplicate entries
-                if(i == 0 || buffer[i] != audios.get(audios.size()-1)) {
-                    audios.add(buffer[i]);
+
+            for(int bufferInc = 0; bufferInc < buffer.length; bufferInc++) {
+                // separate channels
+                if(bufferInc % 2 == 0) {
+                    channelOneArray.add(buffer[bufferInc]);
+                } else {
+                    channelTwoArray.add(buffer[bufferInc]);
                 }
             }
         }
@@ -35,7 +39,21 @@ public class WavUtilities {
         // Close the wavFile
         wavFile.close();
 
-        return audios;
+        double[][] audio = new double[wavFile.getNumChannels()][channelOneArray.size()];
+        for(int i = 0; i < channelOneArray.size(); i++) {
+            audio[0][i] = channelOneArray.get(i);
+            audio[1][i] = channelTwoArray.get(i);
+        }
+
+        return audio;
+    }
+
+    public static double[] getSingleChannelFromSignal(double[][] signal, int channel) {
+        double[] channelSignal = new double[signal[0].length];
+        for(int i = 0; i < signal[0].length; i++) {
+            channelSignal[i] = signal[channel][i];
+        }
+        return channelSignal;
     }
 
     public static List<Double> signalArrayToList(double[] signal) {

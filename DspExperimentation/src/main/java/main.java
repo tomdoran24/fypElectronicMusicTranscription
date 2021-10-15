@@ -1,5 +1,6 @@
 import com.github.psambit9791.jdsp.signal.Generate;
 import com.github.psambit9791.wavfile.WavFileException;
+import org.apache.commons.math3.util.ArithmeticUtils;
 
 import javax.sound.sampled.*;
 import java.io.File;
@@ -14,20 +15,20 @@ public class main {
         double[] signalArraySineWave = gp.generateSineWave(440);
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_440.wav");
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_659-25.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
         double samplingPeriod = 1 / samplingFreq;
 
-        //List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(signalArraySineWave);
-        List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(WavUtilities.signalListToArray(WavUtilities.getWavSignalListFromFile(file)));
-        //GraphSignals.createWorkbooks(autocorrelationResult, null);
+        double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), 0);
 
-        List<Double> autocorrelationResultPruned = pruneAutocorrelationResult(autocorrelationResult);
-        int distanceBetweenFirstTwoPeaks = calculatePeakDistance(autocorrelationResultPruned);
+        List<Double> result = new LinkedList<>();
+        AutocorrelationByFourier.runAutocorrellationByFourier(signal);
 
-        System.out.println(periodToFrequency(distanceBetweenFirstTwoPeaks, samplingPeriod));
+        for(Double d : result) {
+            System.out.println();
+        }
     }
 
 
