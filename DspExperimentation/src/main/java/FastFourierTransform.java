@@ -1,5 +1,7 @@
 import org.apache.commons.math3.complex.Complex;
 
+import java.util.Arrays;
+
 import static java.lang.Math.*;
 
 public class FastFourierTransform {
@@ -13,7 +15,10 @@ public class FastFourierTransform {
 
         // radix 2 Cooley-Tukey FFT
         if (n % 2 != 0) {
-            throw new IllegalArgumentException("n is not a power of 2");
+            // build a new array with a 0 on the end
+            x = Arrays.copyOf(x, n+1);
+            x[n] = new Complex(0);
+            n = n+1;
         }
 
         // compute FFT of even terms

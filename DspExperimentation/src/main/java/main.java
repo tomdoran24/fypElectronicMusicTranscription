@@ -15,7 +15,7 @@ public class main {
         double[] signalArraySineWave = gp.generateSineWave(440);
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_659-25.wav");
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_49.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
@@ -23,14 +23,25 @@ public class main {
 
         double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), 0);
 
-        List<Double> result = new LinkedList<>();
-        AutocorrelationByFourier.runAutocorrellationByFourier(signal);
-
-        for(Double d : result) {
-            System.out.println();
-        }
+        //List<Double> convolutionResult = AutocorrelationByFourier.runAutocorrellationByFourier(signal);
+        List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(signal);
+        System.out.println(periodToFrequency(calculatePeakDistance(autocorrelationResult), samplingPeriod));
+        //GraphSignals.createWorkbooks(convolutionResult, null);
     }
 
+    private static double getFourierFundamentalFreq(List<Double> fourierResult, double sampleRate) {
+        // will need to walk through (half of) the result & record the highest peak
+        double peakValue = 0;
+        int peakIndex = 0;
+        for(int i = 0; i<fourierResult.size()/2; i++) {
+            if(fourierResult.get(i) > peakValue) {
+                peakValue = fourierResult.get(i);
+                peakIndex = i;
+            }
+        }
+        // once peak has been found, calculate frequency
+        return ((double) (peakIndex+1) / fourierResult.size()) * sampleRate;
+    }
 
 
     private static double periodToFrequency(int periodInSamples, double samplingPeriod) {
