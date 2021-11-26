@@ -46,7 +46,7 @@ public class GraphSignals {
             }
         }
 
-        try  (OutputStream fileOut = new FileOutputStream("convolution_output.xls")) {
+        try  (OutputStream fileOut = new FileOutputStream("cepstrum_output.xls")) {
             wb.write(fileOut);
         }
     }
