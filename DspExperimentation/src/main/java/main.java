@@ -15,7 +15,7 @@ public class main {
         double[] signalArraySineWave = gp.generateSineWave(440);
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/piano_tone_440.wav");
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/sine_duration_test_0-15-50_s.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
@@ -23,13 +23,14 @@ public class main {
 
         double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), 0);
 
+        double length = NoteDuration.calculate(signal, samplingPeriod);
+
         List<Double> cepstrumAnalysisResult = CepstrumAnalysis.Cepstrum(signal);
         //List<Double> convolutionResult = AutocorrelationByFourier.runAutocorrellationByFourier(signal);
         //List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(signal);
-        System.out.println(getFourierFundamentalFreq(cepstrumAnalysisResult, samplingPeriod));
+        System.out.println(getFourierFundamentalFreq(cepstrumAnalysisResult, samplingFreq));
         //GraphSignals.createWorkbooks(cepstrumAnalysisResult, null);
     }
-
 
     private static double getFourierFundamentalFreq(List<Double> fourierResult, double sampleRate) {
         // will need to walk through (half of) the result & record the highest peak
