@@ -3,6 +3,8 @@ import java.util.Arrays;
 
 public class NoteDuration {
 
+    private static int THRESHOLD = 2;
+
     public static double calculate(double[] originalSignal, double samplingPeriod) {
         double[] signal = trim(originalSignal);
         int silenceIndex = -1;
@@ -11,7 +13,7 @@ public class NoteDuration {
         for(int i=0; i<signal.length; i++) {
             double n = signal[i];
             // if we have 3 samples of silence in a row, assume note is finished
-            if(n == 0 && nMinusOne == 0 && nMinusTwo == 0) {
+            if(n >= THRESHOLD && nMinusOne >= THRESHOLD && nMinusTwo >= THRESHOLD) {
                 silenceIndex = i-3;
                 break;
             }
