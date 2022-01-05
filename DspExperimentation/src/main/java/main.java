@@ -25,6 +25,7 @@ public class main {
 
         double length = NoteDuration.calculate(signal, samplingPeriod);
 
+
         List<Double> cepstrumAnalysisResult = CepstrumAnalysis.Cepstrum(signal);
         //List<Double> convolutionResult = AutocorrelationByFourier.runAutocorrellationByFourier(signal);
         //List<Double> autocorrelationResult = Autocorrelation.runAutocorrelation(signal);
