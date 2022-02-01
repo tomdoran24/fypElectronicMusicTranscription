@@ -10,8 +10,36 @@ public enum Note {
     Ab(25.957,  "Ab"),
     A(27.500,   "A"),
     Bb(29.135,  "Bb"),
-    B(30.868,   "B");
+    B(30.868,   "B"),
 
+    B1(123.47,   "B1"),
+    // OCT 2                        // (2 on Logic, 3 on https://pages.mtu.edu/~suits/notefreqs.html)
+    C2(130.81,   "C2"),
+    Db2(138.59,  "Db2"),
+    D2(146.83,   "D2"),
+    Eb2(155.56,  "Eb2"),
+    E2(164.81,   "E2"),
+    F2(174.61,   "F2"),
+    Gb2(185.00,  "Gb2"),
+    G2(196.00,   "G2"),
+    Ab2(207.65,  "Ab2"),
+    A2(220.00,   "A2"),
+    Bb2(233.08,  "Bb2"),
+    B2(246.94,   "B2"),
+
+    // OCT 3
+    C3(261.63,   "C3"),
+    Db3(277.18,  "Db3"),
+    D3(293.66,   "D3"),
+    Eb3(311.13,  "Eb3"),
+    E3(329.63,   "E3"),
+    F3(349.23,   "F3"),
+    Gb3(369.99,  "Gb3"),
+    G3(392.00,   "G3"),
+    Ab3(415.30,  "Ab3"),
+    A3(440.00,   "A3"),
+    Bb3(466.16,  "Bb3"),
+    B3(493.88,   "B3");
 
     private double freq;
     private String value;
@@ -26,5 +54,32 @@ public enum Note {
 
     public String getValue() {
         return value;
+    }
+
+    public static Note roundFreqToNearestNote(double freq) {
+        Note upperBound = null;
+        Note lowerBound = null;
+        for(Note note : Note.values()) {
+            // if found bounds, exit & calculate
+            if(upperBound != null && lowerBound != null) {
+                break;
+            } else {
+                // otherwise, test against values
+                if(note.getFreq() < freq) {
+                    lowerBound = note;
+                }
+                if(note.getFreq() > freq) {
+                    upperBound = note;
+                }
+            }
+        }
+        // PUT IN CASE FOR NO BOUNDS FOUND
+
+        // calculate whether closer to upper or lower bound & round
+        if(upperBound.getFreq() - freq > freq - lowerBound.getFreq()) {
+            return lowerBound;
+        } else {
+            return upperBound;
+        }
     }
 }

@@ -19,10 +19,10 @@ public class AutocorrelationByFourier {
         // multiply two together
         FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);
         double[] subSignal = Arrays.copyOf(signal, 65536);
-        Complex[] comSig = new Complex[65536];
+        /*Complex[] comSig = new Complex[65536];
         for(int i = 0; i<65535;i++) {
             comSig[i] = new Complex(signal[i]);
-        }
+        }*/
         Complex[] fftResult = fft.transform(subSignal, TransformType.FORWARD);
         //Complex[] fftResult = FastFourierTransform.fft(comSig);
         Complex[] conjResult = new Complex[fftResult.length];

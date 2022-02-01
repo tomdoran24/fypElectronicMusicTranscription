@@ -46,7 +46,7 @@ public class GraphSignals {
             }
         }
 
-        try  (OutputStream fileOut = new FileOutputStream("cepstrum_output.xls")) {
+        try  (OutputStream fileOut = new FileOutputStream("test_wav_signal.xls")) {
             wb.write(fileOut);
         }
     }
