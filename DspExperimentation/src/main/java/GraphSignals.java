@@ -8,7 +8,7 @@ import java.io.OutputStream;
 import java.util.List;
 
 public class GraphSignals {
-    public static void createWorkbooks(List<Double> doubleSignal, List<Integer> integerSignal) throws java.io.IOException {
+    public static void  createWorkbooks(List<Double> doubleSignal, List<Integer> integerSignal) throws java.io.IOException {
         Workbook wb = new HSSFWorkbook();
         Sheet sheet1 = wb.createSheet("Sheet 1");
 
@@ -46,7 +46,7 @@ public class GraphSignals {
             }
         }
 
-        try  (OutputStream fileOut = new FileOutputStream("test_wav_signal.xls")) {
+        try  (OutputStream fileOut = new FileOutputStream("example_signal.xls")) {
             wb.write(fileOut);
         }
     }

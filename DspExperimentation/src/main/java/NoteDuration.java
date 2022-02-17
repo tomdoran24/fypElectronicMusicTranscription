@@ -6,11 +6,12 @@ import java.util.List;
 
 public class NoteDuration {
 
-    private static double THRESHOLD = 0.01;
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
     private static int LOOKAHEAD = 2000;
-    private static double SENSITIVITY_THRESHOLD = 0.01;
-    private static int PEAK_WIDTH_THRESHOLD = 4000;         // 90 ms at 44100hz
+    private static double SENSITIVITY_THRESHOLD = 0.01;     // higher value is less sensitive
+    private static int PEAK_WIDTH_THRESHOLD = 8000;         // 90 ms at 44100hz
+    private static int SILENCE_WIDTH_THRESHOLD = 8000;      // account for reverb & tail
+    private static int SILENCE_LOOKAHEAD = 1000;
 
     public static List<Integer> calculateNoteStartingIndices(double[] originalSignal, double samplingPeriod) {
 
@@ -37,24 +38,45 @@ public class NoteDuration {
         // go through rest of signal & find similar peaks
         List<Integer> peakIndexes = findPeaks(signal, peakN);
 
+        // look for periods of silence in signal
+
         // found peaks of signal (size of peakIndexes should == # of notes)
         // find beginning of note
         List<Integer> startIndicesOfNotes = new ArrayList<>();
         for(Integer peakIndex : peakIndexes) {
-            startIndicesOfNotes.add(findBeginningOfPeak(signal, peakIndex));
+            // for first, use silence
+            if(peakIndexes.indexOf(peakIndex) == 0) {
+                startIndicesOfNotes.add(lengthOfSilence + 1);
+            } else {
+                startIndicesOfNotes.add(findBeginningOfPeak(signal, peakIndex));
+            }
         }
 
         return startIndicesOfNotes;
     }
 
-    public static List<Double> calculateNoteLengthInSeconds(List<Integer> startIndicesOfNotes, double[] signal, double samplingPeriod) {
-        // calculate time between each note, ASSUME NO SILENCE FOR MVP
+    public static List<Double> calculateNoteLengthInSeconds(List<Integer> startIndicesOfNotes, List<Integer> indicesOfSilence, double[] signal, double samplingPeriod) {
+        // calculate time between each note
         List<Double> noteLengthsInSecs = new ArrayList<>();
         for(int i = 0; i < startIndicesOfNotes.size(); i++) {
             if(i != startIndicesOfNotes.size()-1) {
-                noteLengthsInSecs.add((startIndicesOfNotes.get(i+1) - startIndicesOfNotes.get(i)) * samplingPeriod);
+                int nextNoteIndex = startIndicesOfNotes.get(i+1);
+                // if there is a silence before next note, end at silence
+                if(indicesOfSilence.size() > 0 && indicesOfSilence.get(0) < nextNoteIndex) {
+                    noteLengthsInSecs.add((indicesOfSilence.get(0) - startIndicesOfNotes.get(i)) * samplingPeriod);
+                } else {
+                    // otherwise, cut off at next note
+                    noteLengthsInSecs.add((nextNoteIndex - startIndicesOfNotes.get(i)) * samplingPeriod);
+                }
+                indicesOfSilence.removeIf(index -> index < (nextNoteIndex + PEAK_WIDTH_THRESHOLD/2));
             } else {
-                noteLengthsInSecs.add((signal.length - startIndicesOfNotes.get(i)) * samplingPeriod);
+                // for last detected note, end at silence if it ends before the end of signal
+                if(indicesOfSilence.size() > 0 && indicesOfSilence.get(0) < signal.length) {
+                    noteLengthsInSecs.add((indicesOfSilence.get(0) - startIndicesOfNotes.get(i)) * samplingPeriod);
+                } else {
+                    // otherwise, extend to the end of the signal
+                    noteLengthsInSecs.add((signal.length - startIndicesOfNotes.get(i)) * samplingPeriod);
+                }
             }
         }
 
@@ -92,9 +114,6 @@ public class NoteDuration {
             // use peak value found as a
             double peakValue = signal[peakN];
             for (int i = 0; i < nextSliceOfArray.length; i++) {
-                if(i >= 1990) {
-                    System.out.println("");
-                }
                 double value = nextSliceOfArray[i];
                 if ((peakValue - value < SENSITIVITY_THRESHOLD) || value > peakValue) {
                     peakIndexes.add(startIndex+i);
@@ -106,8 +125,8 @@ public class NoteDuration {
     }
 
     private static Integer findBeginningOfPeak(double[] signal, Integer peakIndex) {
-        if((peakIndex-2000) > 0) {
-            return peakIndex - 2000;
+        if((peakIndex-(PEAK_WIDTH_THRESHOLD/2)) > 0) {
+            return peakIndex - (PEAK_WIDTH_THRESHOLD/2);
         } else {
             return 0;
         }
@@ -213,5 +232,26 @@ public class NoteDuration {
             }
         }
         return trnsnt;
+    }
+
+    public static List<Integer> calculateSilenceIndices(double[] signal) {
+        signal = trim(signal);
+        List<Integer> silenceIndices = new ArrayList<>();
+        for(int i = 0; i < signal.length; i++) {
+            double n = signal[i];
+            // if we have 10 samples of silence assume there is a silence
+            if(n == 0) {
+                // step while silence
+                int lookaheadInc = 0;
+                while(i < signal.length && signal[i] == 0 && lookaheadInc < SILENCE_LOOKAHEAD) {
+                    lookaheadInc++;
+                    i++;
+                }
+                if(lookaheadInc == SILENCE_LOOKAHEAD) {
+                    silenceIndices.add(i - SILENCE_WIDTH_THRESHOLD);
+                }
+            }
+        }
+        return silenceIndices;
     }
 }

@@ -17,16 +17,16 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException, InvalidMidiDataException {
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/test.wav");
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/mary.wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
         double samplingPeriod = 1 / samplingFreq;
 
         double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), 0);
-        List<Integer> noteLengths = NoteDuration.calculateNoteStartingIndices(signal, samplingPeriod);
-        List<Double> noteLengthSeconds = NoteDuration.calculateNoteLengthInSeconds(noteLengths, signal, samplingPeriod);
-        //List<Double> noteStartTimeSeconds = NoteDuration.calculateNoteStartTimeInSeconds(noteLengths, signal, samplingPeriod);
+        List<Integer> indicesOfNotes = NoteDuration.calculateNoteStartingIndices(signal, samplingPeriod);
+        List<Integer> indicesOfSilence = NoteDuration.calculateSilenceIndices(signal);
+        List<Double> noteLengthSeconds = NoteDuration.calculateNoteLengthInSeconds(indicesOfNotes, indicesOfSilence, signal, samplingPeriod);
 
         Sequence seq = new Sequence(Sequence.PPQ, 24);
         Track track = seq.createTrack();
@@ -66,20 +66,20 @@ public class main {
 
         double tickLengthInMs = (60000 / (120 * 24));
 
-        int startingIndex = noteLengths.get(0);
+        int startingIndex = indicesOfNotes.get(0);
         int count = 1;
-        while(count <= noteLengths.size()) {
+        while(count <= indicesOfNotes.size()) {
             int velocity = 90; // TO DO: implement velocity
             ShortMessage noteOnMsg = new ShortMessage();
             // run fft on each note
-            double[] noteArray = count != noteLengths.size() ? Arrays.copyOfRange(signal, startingIndex, noteLengths.get(count)) : Arrays.copyOfRange(signal, startingIndex, signal.length);
+            double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(signal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(signal, startingIndex, signal.length);
             Note note = Note.roundFreqToNearestNote(getFourierFundamentalFreq(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq));
 
             // set up MIDI message object for note start
             int midiNumber = (int) Math.round(12 * (Math.log(note.getFreq()/220)/Math.log(2)) + 57);
             noteOnMsg.setMessage(ShortMessage.NOTE_ON, midiNumber, velocity);
 
-            double noteStartInSeconds = noteLengths.get(count-1) * samplingPeriod;
+            double noteStartInSeconds = indicesOfNotes.get(count-1) * samplingPeriod;
             double tickValueOnMs = (noteStartInSeconds / tickLengthInMs) * 1000;
             Long tickTimeStampOn = new Double(tickValueOnMs).longValue();
             MidiEvent noteOnEvent = new MidiEvent(noteOnMsg, tickTimeStampOn);
@@ -94,7 +94,7 @@ public class main {
             MidiEvent noteOffEvent = new MidiEvent(noteOffMsg, tickTimeStampOff);
             track.add(noteOffEvent);
 
-            startingIndex = count != noteLengths.size() ? noteLengths.get(count) : -1;
+            startingIndex = count != indicesOfNotes.size() ? indicesOfNotes.get(count) : -1;
             count++;
         }
 

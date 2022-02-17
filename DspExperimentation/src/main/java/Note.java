@@ -39,7 +39,35 @@ public enum Note {
     Ab3(415.30,  "Ab3"),
     A3(440.00,   "A3"),
     Bb3(466.16,  "Bb3"),
-    B3(493.88,   "B3");
+    B3(493.88,   "B3"),
+
+    // OCT 4
+    C4(523.25,   "C4"),
+    Db4(554.37,  "Db4"),
+    D4(587.33,   "D4"),
+    Eb4(622.25,  "Eb4"),
+    E4(659.25,   "E4"),
+    F4(698.46,   "F4"),
+    Gb4(739.99,  "Gb4"),
+    G4(783.99,   "G4"),
+    Ab4(830.61,  "Ab4"),
+    A4(880.00,   "A4"),
+    Bb4(932.33,  "Bb4"),
+    B4(987.77,   "B4"),
+
+    // OCT 5
+    C5(1046.50,   "C5"),
+    Db5(1108.73,  "Db5"),
+    D5(1174.66,   "D5"),
+    Eb5(1244.51,  "Eb5"),
+    E5(1318.51,   "E5"),
+    F5(1396.91,   "F5"),
+    Gb5(1479.98,  "Gb5"),
+    G5(1567.98,   "G5"),
+    Ab5(1661.22,  "Ab5"),
+    A5(1760.00,   "A5"),
+    Bb5(1864.66,  "Bb5"),
+    B5(1975.53,   "B5");
 
     private double freq;
     private String value;
@@ -73,13 +101,15 @@ public enum Note {
                 }
             }
         }
-        // PUT IN CASE FOR NO BOUNDS FOUND
-
-        // calculate whether closer to upper or lower bound & round
-        if(upperBound.getFreq() - freq > freq - lowerBound.getFreq()) {
-            return lowerBound;
+        if(upperBound != null && lowerBound != null) {
+            // calculate whether closer to upper or lower bound & round
+            if (upperBound.getFreq() - freq > freq - lowerBound.getFreq()) {
+                return lowerBound;
+            } else {
+                return upperBound;
+            }
         } else {
-            return upperBound;
+            return upperBound == null ? lowerBound : upperBound;
         }
     }
 }
