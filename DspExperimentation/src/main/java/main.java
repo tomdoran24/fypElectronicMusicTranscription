@@ -35,7 +35,7 @@ public class main {
             // run fft on each note
             double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(signal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(signal, startingIndex, signal.length);
             Map<List<Double>, List<Double>> fourierResult = extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
-            //Note note = Note.roundFreqToNearestNote(getFourierFundamentalFreq(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq));
+            Note noteTest = Note.roundFreqToNearestNote(getFourierFundamentalFreq(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq));
 
             // freq calculation
             List<Double> peakFreqs = new ArrayList<>(fourierResult.keySet()).get(0); // will only ever be 1 value in key set
@@ -65,7 +65,7 @@ public class main {
                         }
 
                         // check for note end time in this section of signal
-                        newLengthSeconds.add(runFFTsToExtendNoteLength(otherNotePresent.getFreq(), noteArray, noteLengthSeconds.get(count - 2), samplingFreq, samplingPeriod));
+                        newLengthSeconds.add(runFFTsToExtendNoteLength(otherNotePresent, noteArray, noteLengthSeconds.get(count - 2), samplingFreq, samplingPeriod));
                         notesExtended.add(otherNotePresent);
                     }
                     // do nothing if rounded value is the same as the peakFreq
@@ -113,14 +113,14 @@ public class main {
         //GraphSignals.createWorkbooks(testSignal, null);
     }
 
-    private static Double runFFTsToExtendNoteLength(Double freq, double[] noteArray, Double oldLength, Double sampleRate, Double samplingPeriod) {
+    private static Double runFFTsToExtendNoteLength(Note note, double[] noteArray, Double oldLength, Double sampleRate, Double samplingPeriod) {
         int WINDOW = 2000;
         int lowerBound = 0;
         int upperBound = WINDOW;
         boolean notePresent = true;
         while(upperBound != noteArray.length && notePresent) {
             double[] subSection = Arrays.copyOfRange(noteArray, lowerBound, upperBound);
-            if(getSpecifiedFourierFreq(AutocorrelationByFourier.runAutocorrellationByFourier(subSection), sampleRate, freq)) {
+            if(getSpecifiedFourierFreq(AutocorrelationByFourier.runAutocorrellationByFourier(subSection), sampleRate, note)) {
                 lowerBound = lowerBound+WINDOW;
                 if(upperBound+WINDOW < noteArray.length) {
                     upperBound = upperBound + WINDOW;
@@ -135,11 +135,10 @@ public class main {
         return oldLength + (lowerBound * samplingPeriod);
     }
 
-    private static boolean getSpecifiedFourierFreq(List<Double> fourierResult, double sampleRate, double freq) {
-        Note note = Note.roundFreqToNearestNote(freq);
+    private static boolean getSpecifiedFourierFreq(List<Double> fourierResult, double sampleRate, Note note) {
         boolean present = false;
         for(int i = 0; i<fourierResult.size()/2; i++) {
-            if(fourierResult.get(i) >= 20 // only above threshold
+            if(fourierResult.get(i) >= 2 // only above threshold
                     && Note.roundFreqToNearestNote(((double) i / fourierResult.size()) * sampleRate).getFreq() == note.getFreq()) {
                 present = true;
             }
@@ -172,9 +171,10 @@ public class main {
                 peakIndex = i;
             }
         }
-        double cutOffValue = (peakValue / 100)*30; // cut off magnitude for other frequencies (70% less than peak)
-        double peakCutOffValue = (peakValue / 100)*95;
+        double cutOffValue = (peakValue / 100)*5; // cut off magnitude for other frequencies (90% less than peak)
+        double peakCutOffValue = (peakValue / 100)*80;
         List<Integer> peakIndices = new ArrayList<>();
+        peakIndices.add(peakIndex);
         List<Integer> otherPeaksIndices = new ArrayList<>();
         for(int i = 0; i<fourierResult.size()/2; i++) {
             if(fourierResult.get(i) >= peakCutOffValue && i != peakIndex) {
