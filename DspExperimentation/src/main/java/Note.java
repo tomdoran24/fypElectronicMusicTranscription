@@ -112,4 +112,28 @@ public enum Note {
             return upperBound == null ? lowerBound : upperBound;
         }
     }
+
+    private Note parseNote(String s) {
+        for(Note note : Note.values()) {
+            if(note.getValue().equals(s))
+                return note;
+        }
+        return null;
+    }
+
+    public Note convertToZeroOctave() {
+        if(this.getValue().length() > 1) {
+            // at this point it could be a zero octave flat or a higher octave
+            if(this.getValue().charAt(this.getValue().length()-1) != 'b') {
+                // at this point it must be a note that ends in a number, so take the number off & parse
+                return parseNote(this.getValue().substring(0, this.getValue().length()-1));
+            } else {
+                // otherwise, it must be a zero octave flat, so just return
+                return this;
+            }
+        } else {
+            // otherwise, it must be a zero octave non-flat note, so just return
+            return this;
+        }
+    }
 }

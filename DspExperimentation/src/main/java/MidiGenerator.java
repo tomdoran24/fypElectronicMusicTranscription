@@ -2,11 +2,15 @@ import javax.sound.midi.*;
 import javax.sound.midi.spi.MidiFileWriter;
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MidiGenerator {
 
-    public static void generateMidi(List<MIDI> midiData, int signalLength) throws InvalidMidiDataException, IOException {
+    public static void generateMidi(List<MIDI> midiData, Key keySignature, int signalLength, String fileName) throws InvalidMidiDataException, IOException {
 
         Sequence seq = new Sequence(Sequence.PPQ, 24);
         Track track = seq.createTrack();
@@ -64,8 +68,12 @@ public class MidiGenerator {
         me = new MidiEvent(mt, new Double(signalLength / track.ticks()).longValue());
         track.add(me);
 
+        String prefix = "_" + keySignature.getName() + "_";
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yy_HH-mm", Locale.ENGLISH);
+        String dateStr = sdf.format(new Date());
+
         MidiFileWriter fileWriter = new MidiFileWriterImpl();
-        fileWriter.write(seq, 1, new File("midi-file-test.mid"));
+        fileWriter.write(seq, 1, new File(fileName+prefix+dateStr+".mid"));
 
     }
 }

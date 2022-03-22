@@ -53,4 +53,6 @@ public class MIDI {
     public void setTickValueOnMs(double tickValueOnMs) {
         this.tickValueOnMs = tickValueOnMs;
     }
+
+
 }

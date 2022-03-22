@@ -1,7 +1,6 @@
 import com.github.psambit9791.wavfile.WavFileException;
 
 import javax.sound.midi.*;
-import javax.sound.midi.spi.MidiFileWriter;
 import javax.sound.sampled.*;
 import java.io.File;
 import java.io.IOException;
@@ -12,7 +11,8 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException, InvalidMidiDataException {
 
         // import file
-        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/overlapping_notes_test.wav");
+        String fileName = "test_d_major";
+        File file = new File("/Users/tomdoran/Desktop/FYP WAV files/" + fileName + ".wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
@@ -34,7 +34,7 @@ public class main {
             int velocity = 90; // TO DO: implement velocity
             // run fft on each note
             double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(signal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(signal, startingIndex, signal.length);
-            Map<List<Double>, List<Double>> fourierResult = extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
+            Map<List<Double>, List<Double>> fourierResult = AutocorrelationByFourier.extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
             Note noteTest = Note.roundFreqToNearestNote(getFourierFundamentalFreq(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq));
 
             // freq calculation
@@ -80,37 +80,98 @@ public class main {
                     }
                 }
             }
-            // TO DO: implement multiple notes at this point!
+
             if(!peakNotes.isEmpty()) {
-                Note note = new ArrayList<>(peakNotes).get(0);   // change me!
+                for(Note note : peakNotes) {
 
-                // set up MIDI message object for note start
-                ShortMessage noteOnMsg = new ShortMessage();
-                int midiNumber = (int) Math.round(12 * (Math.log(note.getFreq() / 220) / Math.log(2)) + 57);
-                noteOnMsg.setMessage(ShortMessage.NOTE_ON, midiNumber, velocity);
+                    // set up MIDI object data
+                    double noteStartInSeconds = indicesOfNotes.get(count - 1) * samplingPeriod;
+                    double tickValueOnMs = (noteStartInSeconds / tickLengthInMs) * 1000;
+                    Long tickTimeStampOn = new Double(tickValueOnMs).longValue();
+                    double noteLengthInSeconds = noteLengthSeconds.get(count - 1);
+                    double tickValueOffMs = tickValueOnMs + ((noteLengthInSeconds / tickLengthInMs) * 1000);
+                    Long tickTimeStampOff = new Double(tickValueOffMs).longValue();
 
-                double noteStartInSeconds = indicesOfNotes.get(count - 1) * samplingPeriod;
-                double tickValueOnMs = (noteStartInSeconds / tickLengthInMs) * 1000;
-                Long tickTimeStampOn = new Double(tickValueOnMs).longValue();
-
-                double noteLengthInSeconds = noteLengthSeconds.get(count - 1);
-                double tickValueOffMs = tickValueOnMs + ((noteLengthInSeconds / tickLengthInMs) * 1000);
-                Long tickTimeStampOff = new Double(tickValueOffMs).longValue();
-
-                midiData.add(new MIDI(note, tickTimeStampOn, tickTimeStampOff, velocity, tickValueOnMs));
+                    // create new MIDI object to store data
+                    midiData.add(new MIDI(note, tickTimeStampOn, tickTimeStampOff, velocity, tickValueOnMs));
+                }
             }
             startingIndex = count != indicesOfNotes.size() ? indicesOfNotes.get(count) : -1;
             count++;
         }
 
-        // generate MIDI data from midi data list
-        MidiGenerator.generateMidi(midiData, signal.length);
+        // detect key & eliminate accidentals
+        Map<Key,Map<Note, Integer>> keyAndNoteWeighting = KeySignature.generateKeyAndNoteWeighting(notes);
+        Key keySignature = new LinkedList<>(keyAndNoteWeighting.keySet()).get(0);
+        Map<Note, Integer> noteWeights = keyAndNoteWeighting.get(keySignature);
+        List<MIDI> revisedMidiData = removeAccidentals(midiData, keySignature, noteWeights, notes.size());
 
+        // eliminate doubles
+        List<MIDI> notesToBeRemoved = new ArrayList<>();
+        for(int i = 0; i < midiData.size(); i++) {
+            // if there is a note such that the end of this note is the start of the next note
+            for(int j = 0; j < midiData.size(); j++) {
+                if(j != i) {
+                    if(midiData.get(i).getNote() == midiData.get(j).getNote()
+                    && midiData.get(i).getTickTimeStampOff().compareTo(midiData.get(j).getTickTimeStampOn()) == 0) {
+                        notesToBeRemoved.add(midiData.get(j));
+                    }
+                }
+            }
+        }
+
+        revisedMidiData = mergeDuplicates(revisedMidiData, notesToBeRemoved);
+
+        // generate MIDI data from midi data list
+        MidiGenerator.generateMidi(revisedMidiData, keySignature, signal.length, fileName);
+
+        /*
         List<Double> testSignal = new LinkedList<>();
         for(double d : signal) {
             testSignal.add(d);
         }
-        //GraphSignals.createWorkbooks(testSignal, null);
+        GraphSignals.createWorkbooks(testSignal, null);
+         */
+    }
+
+    private static List<MIDI> removeAccidentals(List<MIDI> midiData, Key keySignature, Map<Note, Integer> noteWeights, int totalNotes) {
+        List<MIDI> accidentals = new LinkedList<>();
+        // first get the lowest count
+        int lowest = Integer.MAX_VALUE;
+        for(Integer count : noteWeights.values()) {
+            if(count < lowest) {
+                lowest = count;
+            }
+        }
+        // perhaps use this value to set a threshold?
+        if(lowest < totalNotes / 12) {
+            // consider notes outside the key sig with the lowest count accidentals & remove them
+            for(MIDI midi : midiData) {
+                if(!keySignature.getNotes().contains(midi.getNote()) &&
+                noteWeights.get(midi.getNote()) == lowest) {
+                    accidentals.add(midi);
+                }
+            }
+        }
+        midiData.removeIf(entry -> accidentals.contains(entry));
+        return midiData;
+    }
+
+    private static List<MIDI> mergeDuplicates(List<MIDI> midiData, List<MIDI> notesToBeRemoved) {
+        // remove overlap between lists
+        midiData.removeIf(entry -> notesToBeRemoved.contains(entry));
+        for(MIDI noteToBeRemoved : notesToBeRemoved) {
+            // first, find the note to extend
+            for(MIDI midi : midiData) {
+                // if found note to extend, update TickTimeStampOff & move to next note to be removed
+                if(midi.getNote() == noteToBeRemoved.getNote() &&
+                midi.getTickTimeStampOff().compareTo(noteToBeRemoved.getTickTimeStampOn()) == 0) {
+                    midi.setTickTimeStampOff(noteToBeRemoved.getTickTimeStampOff());
+                    break;
+                }
+            }
+        }
+        return midiData;
     }
 
     private static Double runFFTsToExtendNoteLength(Note note, double[] noteArray, Double oldLength, Double sampleRate, Double samplingPeriod) {
@@ -151,53 +212,14 @@ public class main {
         // will need to walk through (half of) the result & record the highest peak
         double peakValue = 0;
         int peakIndex = 0;
-        for(int i = 0; i<fourierResult.size()/2; i++) {
-            if(fourierResult.get(i) > peakValue) {
+        for (int i = 0; i < fourierResult.size() / 2; i++) {
+            if (fourierResult.get(i) > peakValue) {
                 peakValue = fourierResult.get(i);
                 peakIndex = i;
             }
         }
         // once peak has been found, calculate frequency
-        return ((double) (peakIndex+1) / fourierResult.size()) * sampleRate;
-    }
-
-    private static Map<List<Double>,List<Double>> extractFourierInformation(List<Double> fourierResult, double sampleRate) {
-        double peakValue = 0;
-        int peakIndex = 0;
-        for(int i = 0; i<fourierResult.size()/2; i++) {
-            if(fourierResult.get(i) > peakValue) {
-                // new peak has been detected, record peak
-                peakValue = fourierResult.get(i);
-                peakIndex = i;
-            }
-        }
-        double cutOffValue = (peakValue / 100)*5; // cut off magnitude for other frequencies (90% less than peak)
-        double peakCutOffValue = (peakValue / 100)*80;
-        List<Integer> peakIndices = new ArrayList<>();
-        peakIndices.add(peakIndex);
-        List<Integer> otherPeaksIndices = new ArrayList<>();
-        for(int i = 0; i<fourierResult.size()/2; i++) {
-            if(fourierResult.get(i) >= peakCutOffValue && i != peakIndex) {
-                // record multiple peaks to check for more notes played at one time
-                peakIndices.add(i);
-            } else if(fourierResult.get(i) >= cutOffValue && i != peakIndex) {
-                // record peaks above the threshold, do not re record peak
-                otherPeaksIndices.add(i);
-            }
-        }
-        // convert all values to frequency
-        List<Double> peakFreqs = new ArrayList<>();
-        for(int index : peakIndices) {
-           peakFreqs.add(((double) (index+1) / fourierResult.size()) * sampleRate);
-        }
-        List<Double> otherPeaksFreq = new ArrayList<>();
-        for(int index : otherPeaksIndices) {
-            otherPeaksFreq.add(((double) (index+1) / fourierResult.size()) * sampleRate);
-        }
-        // return result as a map
-        Map<List<Double>,List<Double>> result = new HashMap<>();
-        result.put(peakFreqs, otherPeaksFreq);
-        return result;
+        return ((double) (peakIndex + 1) / fourierResult.size()) * sampleRate;
     }
 
 

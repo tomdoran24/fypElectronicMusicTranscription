@@ -1,14 +1,11 @@
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class NoteDuration {
 
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
     private static int LOOKAHEAD = 2000;
-    private static double SENSITIVITY_THRESHOLD = 0.01;     // higher value is less sensitive
+    private static double SENSITIVITY_THRESHOLD = 1;     // higher value is more sensitive to peaks
     private static int PEAK_WIDTH_THRESHOLD = 8000;         // 90 ms at 44100hz
     private static int SILENCE_WIDTH_THRESHOLD = 8000;      // account for reverb & tail
     private static int SILENCE_LOOKAHEAD = 1000;
@@ -20,6 +17,7 @@ public class NoteDuration {
         double[] signal = trim(originalSignal);
         int lengthOfSilence = originalSignal.length - signal.length;
         int firstTransient = findFirstTransient(signal);
+        // set sensitivity threshold
         int nextPeakWithLookahead = trendingUp(signal, firstTransient);
         int peakN = nextPeakWithLookahead;
 
@@ -36,6 +34,7 @@ public class NoteDuration {
         // peak with lookahead
 
         // go through rest of signal & find similar peaks
+        System.out.println(signal[peakN]);
         List<Integer> peakIndexes = findPeaks(signal, peakN);
 
         // look for periods of silence in signal
@@ -90,14 +89,18 @@ public class NoteDuration {
         int peaksFound = 0;
         int startIndex = peakN;
         while(startIndex < signal.length) {
-            // if you find a peak skip forward peak_width_threshold indices
             double[] nextSliceOfArray;
+            // if you find a peak skip forward peak_width_threshold indices
             if(peakIndexes.size() > peaksFound) {
-                startIndex = (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) < signal.length ? (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) : startIndex;
-                if (startIndex + LOOKAHEAD < signal.length) {
+                // set start index to skip over peaks, if reached the end of the signal just use last peak value
+                startIndex = (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) < signal.length ? (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) : peakIndexes.get(peaksFound);
+
+                // if start index has been set to skip peaks & this is within the signal with lookahead - cut array to start index + LOOKAHEAD
+                if (startIndex == (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) && startIndex + LOOKAHEAD < signal.length) {
                     nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, startIndex + LOOKAHEAD);
                 } else {
-                    nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, signal.length);
+                    // otherwise, we have reached the end of the signal (or within 90ms of it, so physical capabilities mean there's probably no more notes)
+                    break;
                 }
                 peaksFound++;
             } else {
@@ -107,11 +110,10 @@ public class NoteDuration {
                     startIndex+=LOOKAHEAD;
                     nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, startIndex + LOOKAHEAD);
                 } else {
-                    nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, signal.length);
-                    startIndex+=LOOKAHEAD;
+                    break;
                 }
             }
-            // use peak value found as a
+            // use peak value found as a metric to measure other peaks
             double peakValue = signal[peakN];
             for (int i = 0; i < nextSliceOfArray.length; i++) {
                 double value = nextSliceOfArray[i];
@@ -253,5 +255,89 @@ public class NoteDuration {
             }
         }
         return silenceIndices;
+    }
+
+    public static List<Integer> mergeDuplicateNotes(List<Integer> indicesOfNotes, List<Integer> indicesOfSilence, double[] originalSignal, double samplingFreq) {
+
+        List<Map<List<Double>, List<Double>>> fourierResults = new ArrayList<>();
+        int startingIndex = indicesOfNotes.get(0);
+        int count = 1;
+        while(count <= indicesOfNotes.size()) {
+            double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(originalSignal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(originalSignal, startingIndex, originalSignal.length);
+            Map<List<Double>, List<Double>> fourierResult = AutocorrelationByFourier.extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
+            fourierResults.add(fourierResult);
+            count++;
+        }
+
+        List<Integer> noteIndicesToRemove = new ArrayList<>();
+        for(int i = 0; i < fourierResults.size()-1; i++) {
+            // if notes have no silence between them & the same dominant freq, assume this is the same note
+            int currIndex = indicesOfNotes.get(i);
+            int nextIndex = indicesOfNotes.get(i+1);
+            // if there's an index of silence before next index
+            int inc = 0;
+            boolean silenceBetweenNotes = false;
+            while(inc < indicesOfSilence.size()) {
+                if(indicesOfSilence.get(inc) < nextIndex && indicesOfSilence.get(inc) > currIndex) {
+                    silenceBetweenNotes = true;
+                }
+                inc++;
+            }
+            if(!silenceBetweenNotes) {
+                // check if the fundamental freqs are the same
+                Map<List<Double>, List<Double>> currFourierResult = fourierResults.get(i);
+                Map<List<Double>, List<Double>> nextFourierResult = fourierResults.get(i + 1);
+
+                List<Double> currFundFreqs = new ArrayList<>(currFourierResult.keySet()).get(0);
+                List<Double> nextFundFreqs = new ArrayList<>(nextFourierResult.keySet()).get(0);
+
+                Set<Note> sharedFundamentalNotes = new HashSet<>();
+                Set<Note> currFundamentalNotes = new HashSet<>();
+                Set<Note> nextFundamentalNotes = new HashSet<>();
+                int upperBound = currFundFreqs.size() < nextFundFreqs.size() ? nextFundFreqs.size() : currFundFreqs.size();
+                for (int j = 0; j < upperBound; j++) {
+                    if (j < currFundFreqs.size()) {
+                        Note note = Note.roundFreqToNearestNote(currFundFreqs.get(j));
+                        currFundamentalNotes.add(note);
+                        sharedFundamentalNotes.add(note);
+                    }
+                    if (j < nextFundFreqs.size()) {
+                        Note note = Note.roundFreqToNearestNote(nextFundFreqs.get(j));
+                        nextFundamentalNotes.add(note);
+                        sharedFundamentalNotes.add(note);
+                    }
+                }
+                // if notes are equivalent then fundamental notes will be same size as freq lists
+                if (compareNoteSets(currFundamentalNotes, nextFundamentalNotes, sharedFundamentalNotes)) {
+                    // assume they are the same note, so mark next index for removal
+                    noteIndicesToRemove.add(nextIndex);
+                }
+            }
+        }
+        // merge any notes that are the same note with no silence between them
+        indicesOfNotes.removeIf(entry -> noteIndicesToRemove.contains(entry));
+        return indicesOfNotes;
+    }
+
+    /**
+     * Check that 3 given sets (current, next & shared notes) are equivalent.
+     * @param currFundamentalNotes
+     * @param nextFundamentalNotes
+     * @param sharedFundamentalNotes
+     * @return true if equivalent, false if not
+     */
+    private static boolean compareNoteSets(Set<Note> currFundamentalNotes, Set<Note> nextFundamentalNotes, Set<Note> sharedFundamentalNotes) {
+        if(currFundamentalNotes.size() == nextFundamentalNotes.size() && nextFundamentalNotes.size() == sharedFundamentalNotes.size()) {
+            // all must be the same size at this point
+            for(Note note : currFundamentalNotes) {
+                // if any notes don't match
+                if(!nextFundamentalNotes.contains(note) || !sharedFundamentalNotes.contains(note)) {
+                    return false;
+                }
+            }
+            // if all match
+            return true;
+        }
+        return false;
     }
 }
