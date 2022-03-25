@@ -5,7 +5,7 @@ public class NoteDuration {
 
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
     private static int LOOKAHEAD = 2000;
-    private static double SENSITIVITY_THRESHOLD = 1;     // higher value is more sensitive to peaks
+    private static double SENSITIVITY_THRESHOLD;     // higher value is more sensitive to peaks
     private static int PEAK_WIDTH_THRESHOLD = 8000;         // 90 ms at 44100hz
     private static int SILENCE_WIDTH_THRESHOLD = 8000;      // account for reverb & tail
     private static int SILENCE_LOOKAHEAD = 1000;
@@ -34,7 +34,7 @@ public class NoteDuration {
         // peak with lookahead
 
         // go through rest of signal & find similar peaks
-        System.out.println(signal[peakN]);
+        SENSITIVITY_THRESHOLD = signal[peakN] * 0.9999;
         List<Integer> peakIndexes = findPeaks(signal, peakN);
 
         // look for periods of silence in signal
@@ -117,7 +117,7 @@ public class NoteDuration {
             double peakValue = signal[peakN];
             for (int i = 0; i < nextSliceOfArray.length; i++) {
                 double value = nextSliceOfArray[i];
-                if ((peakValue - value < SENSITIVITY_THRESHOLD) || value > peakValue) {
+                if (value >= peakValue - SENSITIVITY_THRESHOLD) {
                     peakIndexes.add(startIndex+i);
                     break;
                 }

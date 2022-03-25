@@ -11,7 +11,7 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException, InvalidMidiDataException {
 
         // import file
-        String fileName = "test_d_major";
+        String fileName = "guitar";
         File file = new File("/Users/tomdoran/Desktop/FYP WAV files/" + fileName + ".wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
@@ -31,11 +31,10 @@ public class main {
         int count = 1;
         List<Note> notes = new ArrayList<>();
         while(count <= indicesOfNotes.size()) {
-            int velocity = 90; // TO DO: implement velocity
+            int velocity = calculateNoteVelocity(signal[startingIndex]);
             // run fft on each note
             double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(signal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(signal, startingIndex, signal.length);
             Map<List<Double>, List<Double>> fourierResult = AutocorrelationByFourier.extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
-            Note noteTest = Note.roundFreqToNearestNote(getFourierFundamentalFreq(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq));
 
             // freq calculation
             List<Double> peakFreqs = new ArrayList<>(fourierResult.keySet()).get(0); // will only ever be 1 value in key set
@@ -132,6 +131,21 @@ public class main {
         }
         GraphSignals.createWorkbooks(testSignal, null);
          */
+    }
+
+    private static int calculateNoteVelocity(double v) {
+        Double roundedVelocity = new Double(Math.abs(v));
+        while (roundedVelocity.doubleValue() < 1) {
+            if (roundedVelocity.doubleValue() <= 0.1) {
+                roundedVelocity = roundedVelocity * 10;
+            }
+            if(roundedVelocity.doubleValue() >= 0.1 || roundedVelocity.doubleValue() == 0) {
+                break;
+            }
+        }
+        // we don't actually want notes of 128 or 1 velocity, so generalise everything to the 50-90 range
+        roundedVelocity = (40 * roundedVelocity.doubleValue()) + 50;
+        return roundedVelocity.intValue();
     }
 
     private static List<MIDI> removeAccidentals(List<MIDI> midiData, Key keySignature, Map<Note, Integer> noteWeights, int totalNotes) {
