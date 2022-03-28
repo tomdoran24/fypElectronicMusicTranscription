@@ -17,12 +17,89 @@ public class main {
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
         double samplingFreq = audioStream.getFormat().getSampleRate();
         double samplingPeriod = 1 / samplingFreq;
+        int totalSignalLength = 0;
 
-        double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), 0);
-        List<Integer> indicesOfNotes = NoteDuration.calculateNoteStartingIndices(signal, samplingPeriod);
-        List<Integer> indicesOfSilence = NoteDuration.calculateSilenceIndices(signal);
-        List<Double> noteLengthSeconds = NoteDuration.calculateNoteLengthInSeconds(indicesOfNotes, indicesOfSilence, signal, samplingPeriod);
+        Set<Key> keySignature = new HashSet<>();
+        List<List<MIDI>> bothChannelsMidiInformation = new LinkedList<>();
+        for(int i = 0; i < 2; i++) {
+            // get full signal of channel
+            double[] signal = WavUtilities.getSingleChannelFromSignal(WavUtilities.getWavSignalListFromFile(file), i);
+            // update signal length data if channel has more data
+            if(totalSignalLength < signal.length) {
+                totalSignalLength = signal.length;
+            }
+            List<Integer> indicesOfNotes = NoteDuration.calculateNoteStartingIndices(signal, samplingPeriod);
+            List<Integer> indicesOfSilence = NoteDuration.calculateSilenceIndices(signal);
+            List<Double> noteLengthSeconds = NoteDuration.calculateNoteLengthInSeconds(indicesOfNotes, indicesOfSilence, signal, samplingPeriod);
 
+            // extract information from audio & store Key & Midi data
+            Map<Key, List<MIDI>> keyAndMidiData = translateToMidiData(indicesOfNotes, signal, noteLengthSeconds, samplingFreq, samplingPeriod);
+
+            // add Key data
+            Key channelKeySig = (Key) keyAndMidiData.keySet().toArray()[0];
+            keySignature.add(channelKeySig);
+
+            // add midiData to list
+            List<MIDI> channelMidiData = keyAndMidiData.get(channelKeySig);
+            bothChannelsMidiInformation.add(channelMidiData);
+        }
+
+        // set key signature
+        Key key = null;
+        // if only 1 key detected
+        if(keySignature.size() == 1) {
+            key = (Key) keySignature.stream().toArray()[0];
+        }
+
+        List<MIDI> midiData = mergeChannelMidi(bothChannelsMidiInformation);
+
+        // generate actual MIDI data from midi data list
+        MidiGenerator.generateMidi(midiData, key, totalSignalLength, fileName);
+
+        /*
+        List<Double> testSignal = new LinkedList<>();
+        for(double d : signal) {
+            testSignal.add(d);
+        }
+        GraphSignals.createWorkbooks(testSignal, null);
+         */
+    }
+
+    private static List<MIDI> mergeChannelMidi(List<List<MIDI>> bothChannelsMidiInformation) {
+        List<MIDI> finalMidi = new LinkedList<>();
+        List<MIDI> leftChannel = bothChannelsMidiInformation.get(0);
+        List<MIDI> rightChannel = bothChannelsMidiInformation.get(1);
+        int leftInc = 0;
+        int rightInc = 0;
+        while(leftInc + rightInc < (rightChannel.size() + leftChannel.size() - 2)) {
+            if (rightInc < rightChannel.size()) {
+                // if both sides are different, include both
+                if (!leftChannel.contains(rightChannel.get(rightInc)) && !finalMidi.contains(rightChannel.get(rightInc))) {
+                    finalMidi.add(rightChannel.get(rightInc));
+                }
+                // if midi has not been added to final, add it
+                if (!finalMidi.contains(rightChannel.get(rightInc))) {
+                    finalMidi.add(rightChannel.get(rightInc));
+                }
+                rightInc++;
+            }
+            if(leftInc < leftChannel.size()) {
+                // if both sides are different, include both
+                if (!rightChannel.contains(leftChannel.get(leftInc)) && !finalMidi.contains(leftChannel.get(leftInc))) {
+                    finalMidi.add(leftChannel.get(leftInc));
+                }
+                // if midi has not been added to final, add it
+                if (!finalMidi.contains(leftChannel.get(leftInc))) {
+                    finalMidi.add(leftChannel.get(leftInc));
+                }
+                // increment counter
+                leftInc++;
+            }
+        }
+        return finalMidi;
+    }
+
+    private static Map<Key,List<MIDI>> translateToMidiData(List<Integer> indicesOfNotes, double[] signal, List<Double> noteLengthSeconds, double samplingFreq, double samplingPeriod) {
         double tickLengthInMs = (60000 / (120 * 24));
 
         List<MIDI> midiData = new ArrayList<>();
@@ -112,7 +189,7 @@ public class main {
             for(int j = 0; j < midiData.size(); j++) {
                 if(j != i) {
                     if(midiData.get(i).getNote() == midiData.get(j).getNote()
-                    && midiData.get(i).getTickTimeStampOff().compareTo(midiData.get(j).getTickTimeStampOn()) == 0) {
+                            && midiData.get(i).getTickTimeStampOff().compareTo(midiData.get(j).getTickTimeStampOn()) == 0) {
                         notesToBeRemoved.add(midiData.get(j));
                     }
                 }
@@ -121,16 +198,9 @@ public class main {
 
         revisedMidiData = mergeDuplicates(revisedMidiData, notesToBeRemoved);
 
-        // generate MIDI data from midi data list
-        MidiGenerator.generateMidi(revisedMidiData, keySignature, signal.length, fileName);
-
-        /*
-        List<Double> testSignal = new LinkedList<>();
-        for(double d : signal) {
-            testSignal.add(d);
-        }
-        GraphSignals.createWorkbooks(testSignal, null);
-         */
+        Map<Key, List<MIDI>> returnValue = new HashMap<>();
+        returnValue.put(keySignature, revisedMidiData);
+        return returnValue;
     }
 
     private static int calculateNoteVelocity(double v) {

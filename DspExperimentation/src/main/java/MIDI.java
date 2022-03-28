@@ -54,5 +54,13 @@ public class MIDI {
         this.tickValueOnMs = tickValueOnMs;
     }
 
-
+    @Override
+    public boolean equals(Object obj) {
+        MIDI otherMidiObject = (MIDI) obj;
+        return this.getTickTimeStampOn() == otherMidiObject.getTickTimeStampOn() &&
+                this.getTickTimeStampOff() == otherMidiObject.getTickTimeStampOff() &&
+                this.getTickValueOnMs() == otherMidiObject.getTickValueOnMs() &&
+                this.getNote().getFreq() == otherMidiObject.getNote().getFreq() &&
+                this.getVelocity() == otherMidiObject.getVelocity();
+    }
 }
