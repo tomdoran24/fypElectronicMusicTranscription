@@ -1,10 +1,9 @@
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
-public class NoteDuration {
+public class DynamicInformation {
 
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
     private static int LOOKAHEAD = 2000;
