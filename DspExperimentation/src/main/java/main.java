@@ -134,15 +134,26 @@ public class main {
                     if(!peakNotes.contains(otherNotePresent) && notes.contains(otherNotePresent) && !notesExtended.contains(otherNotePresent)) {
 
                         // check track for end time of note
-                        MIDI lastNote = midiData.get(midiData.size()-1);
-                        if(lastNote.getNote().getFreq() == otherNotePresent.getFreq()) {
-                            // set OFF time stamp to null
-                            lastNote.setTickTimeStampOff(null);
+                        MIDI mostRecentMidiNote = null;
+                        Long mostRecentTimeStamp = 0L;
+                        for(int i = 0; i < midiData.size(); i++) {
+                            // get the most recent instance of the note detected
+                            if (midiData.get(i).getNote().getFreq() == otherNotePresent.getFreq()
+                                    && midiData.get(i).getTickTimeStampOff() > mostRecentTimeStamp) {
+                                mostRecentMidiNote = midiData.get(i);
+                                mostRecentTimeStamp = midiData.get(i).getTickTimeStampOff();
+                            }
                         }
-
-                        // check for note end time in this section of signal
-                        newLengthSeconds.add(runFFTsToExtendNoteLength(otherNotePresent, noteArray, noteLengthSeconds.get(count - 2), samplingFreq, samplingPeriod));
-                        notesExtended.add(otherNotePresent);
+                        // if we have found a recent MIDI note
+                        if(mostRecentMidiNote != null) {
+                            // set tick time stamp to null for updating
+                            mostRecentMidiNote.setTickTimeStampOff(null);
+                            // check for note end time in this section of signal
+                            double updatedLength = runFFTsToExtendNoteLength(otherNotePresent, noteArray, noteLengthSeconds.get(count - 2), samplingFreq, samplingPeriod);
+                            newLengthSeconds.add(updatedLength); // add to list to update ticks on object
+                            noteLengthSeconds = replaceElement(noteLengthSeconds, count-2, updatedLength);
+                            notesExtended.add(otherNotePresent); // add to list of notes that should be updated
+                        }
                     }
                     // do nothing if rounded value is the same as the peakFreq
                 }
@@ -176,12 +187,6 @@ public class main {
             count++;
         }
 
-        // detect key & eliminate accidentals
-        Map<Key,Map<Note, Integer>> keyAndNoteWeighting = KeySignature.generateKeyAndNoteWeighting(notes);
-        Key keySignature = new LinkedList<>(keyAndNoteWeighting.keySet()).get(0);
-        Map<Note, Integer> noteWeights = keyAndNoteWeighting.get(keySignature);
-        List<MIDI> revisedMidiData = removeAccidentals(midiData, keySignature, noteWeights, notes.size());
-
         // eliminate doubles
         List<MIDI> notesToBeRemoved = new ArrayList<>();
         for(int i = 0; i < midiData.size(); i++) {
@@ -196,11 +201,23 @@ public class main {
             }
         }
 
-        revisedMidiData = mergeDuplicates(revisedMidiData, notesToBeRemoved);
+        List<MIDI> revisedMidiData = mergeDuplicates(midiData, notesToBeRemoved);
+
+        // detect key & eliminate accidentals
+        Map<Key,Map<Note, Integer>> keyAndNoteWeighting = KeySignature.generateKeyAndNoteWeighting(notes);
+        Key keySignature = new LinkedList<>(keyAndNoteWeighting.keySet()).get(0);
+        Map<Note, Integer> noteWeights = keyAndNoteWeighting.get(keySignature);
+        revisedMidiData = removeAccidentals(revisedMidiData, keySignature, noteWeights, notes.size());
 
         Map<Key, List<MIDI>> returnValue = new HashMap<>();
         returnValue.put(keySignature, revisedMidiData);
         return returnValue;
+    }
+
+    private static List<Double> replaceElement(List<Double> noteLengthSeconds, int index, double updatedLength) {
+        Double[] originalArray = noteLengthSeconds.toArray(new Double[noteLengthSeconds.size()]);
+        originalArray[index] = updatedLength;
+        return new ArrayList<>(Arrays.asList(originalArray));
     }
 
     private static int calculateNoteVelocity(double v) {
@@ -220,19 +237,29 @@ public class main {
 
     private static List<MIDI> removeAccidentals(List<MIDI> midiData, Key keySignature, Map<Note, Integer> noteWeights, int totalNotes) {
         List<MIDI> accidentals = new LinkedList<>();
-        // first get the lowest count
-        int lowest = Integer.MAX_VALUE;
+        // first get the lowest counts
+        int[] threeLowestCounts = new int[3];
+        threeLowestCounts[0] = Integer.MAX_VALUE;
+        threeLowestCounts[1] = Integer.MAX_VALUE;
+        threeLowestCounts[2] = Integer.MAX_VALUE;
         for(Integer count : noteWeights.values()) {
-            if(count < lowest) {
-                lowest = count;
+            if(count != threeLowestCounts[0] && count < threeLowestCounts[0]) {
+                threeLowestCounts[1] = threeLowestCounts[0] < threeLowestCounts[1] ? threeLowestCounts[0] : threeLowestCounts[1];
+                threeLowestCounts[0] = count;
+            }
+            if(count != threeLowestCounts[1] && count < threeLowestCounts[1] && count > threeLowestCounts[0]) {
+                threeLowestCounts[2] = threeLowestCounts[1] < threeLowestCounts[2] ? threeLowestCounts[1] : threeLowestCounts[2];
+                threeLowestCounts[1] = count;
+            }
+            if(count != threeLowestCounts[2] && count < threeLowestCounts[2] && count > threeLowestCounts[1]) {
+                 threeLowestCounts[2] = count;
             }
         }
-        // perhaps use this value to set a threshold?
-        if(lowest < totalNotes / 12) {
+        if(threeLowestCounts[2] < totalNotes / 12) {
             // consider notes outside the key sig with the lowest count accidentals & remove them
             for(MIDI midi : midiData) {
                 if(!keySignature.getNotes().contains(midi.getNote()) &&
-                noteWeights.get(midi.getNote()) == lowest) {
+                noteWeights.get(midi.getNote()) <= threeLowestCounts[2]) {
                     accidentals.add(midi);
                 }
             }
@@ -276,16 +303,21 @@ public class main {
                 notePresent = false;
             }
         }
-        // use lower bound to update old length
-        return oldLength + (lowerBound * samplingPeriod);
+        // use upper bound if we are through the whole section of array & note is present
+        if(notePresent && upperBound == noteArray.length) {
+            return oldLength + (upperBound * samplingPeriod);
+        } else {
+            // otherwise, use lower bound to update old length
+            return oldLength + (lowerBound * samplingPeriod);
+        }
     }
 
     private static boolean getSpecifiedFourierFreq(List<Double> fourierResult, double sampleRate, Note note) {
         boolean present = false;
         for(int i = 0; i<fourierResult.size()/2; i++) {
-            if(fourierResult.get(i) >= 2 // only above threshold
-                    && Note.roundFreqToNearestNote(((double) i / fourierResult.size()) * sampleRate).getFreq() == note.getFreq()) {
+            if(Note.roundFreqToNearestNote(((double) i / fourierResult.size()) * sampleRate).getFreq() == note.getFreq()) {
                 present = true;
+                break;
             }
         }
         // once peak has been found, calculate frequency

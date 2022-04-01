@@ -45,6 +45,7 @@ public class AutocorrelationByFourier {
     public static Map<List<Double>,List<Double>> extractFourierInformation(List<Double> fourierResult, double sampleRate) {
         double peakValue = 0;
         int peakIndex = 0;
+        // this will find the highest peak of frequency in the whole array
         for(int i = 0; i<fourierResult.size()/2; i++) {
             if(fourierResult.get(i) > peakValue) {
                 // new peak has been detected, record peak
@@ -53,7 +54,7 @@ public class AutocorrelationByFourier {
             }
         }
         double cutOffValue = (peakValue / 100)*5; // cut off magnitude for other frequencies (90% less than peak)
-        double peakCutOffValue = (peakValue / 100)*80;
+        double peakCutOffValue = (peakValue / 100)*50;
         List<Integer> peakIndices = new ArrayList<>();
         peakIndices.add(peakIndex);
         List<Integer> otherPeaksIndices = new ArrayList<>();
