@@ -4,8 +4,19 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * Class for generating MIDI data given a list of MIDI object representation
+ */
 public class MidiGenerator {
 
+    /**
+     * Method that converts MIDI data object representation to actual MIDI data given an array of MIDI
+     * objects.
+     * @param midiData list of MIDI objects representing audio signal
+     * @param signalLength length of signal array
+     * @throws InvalidMidiDataException
+     * @throws IOException
+     */
     public static void generateMidi(List<MIDI> midiData, int signalLength) throws InvalidMidiDataException, IOException {
 
         Sequence seq = new Sequence(Sequence.PPQ, 24);
@@ -32,32 +43,36 @@ public class MidiGenerator {
         me = new MidiEvent(mt,(long)0);
         track.add(me);
 
-        //****  set omni on  ****
+        // set omni on
         ShortMessage mm = new ShortMessage();
         mm.setMessage(0xB0, 0x7D,0x00);
         me = new MidiEvent(mm,(long)0);
         track.add(me);
 
-        //****  set poly on  ****
+        // set poly on
         mm = new ShortMessage();
         mm.setMessage(0xB0, 0x7F,0x00);
         me = new MidiEvent(mm,(long)0);
         track.add(me);
 
+        // iterate through given array & read data from objects into MIDI data
         for(MIDI midi : midiData) {
             ShortMessage noteOnMsg = new ShortMessage();
+            // tone calculation
             int midiNumber = (int) Math.round(12 * (Math.log(midi.getNote().getFreq() / 220) / Math.log(2)) + 57);
+            // create MIDI note-on event
             noteOnMsg.setMessage(ShortMessage.NOTE_ON, midiNumber, midi.getVelocity());
             MidiEvent noteOnEvent = new MidiEvent(noteOnMsg, midi.getTickTimeStampOn());
             track.add(noteOnEvent);
 
+            // create MIDI note-off event
             ShortMessage noteOffMsg = new ShortMessage();
             noteOffMsg.setMessage(ShortMessage.NOTE_OFF, midiNumber, 0);
             MidiEvent noteOffEvent = new MidiEvent(noteOffMsg, midi.getTickTimeStampOff());
             track.add(noteOffEvent);
         }
 
-        //****  set end of track (meta event) 19 ticks later  ****
+        // set end of track (meta event) 19 ticks later
         mt = new MetaMessage();
         byte[] bet = {}; // empty array
         mt.setMessage(0x2F,bet,0);

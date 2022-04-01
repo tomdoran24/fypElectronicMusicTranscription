@@ -1,3 +1,6 @@
+/**
+ * Class representing a MIDI object, for easy conversion into actual midi representation
+ */
 public class MIDI {
 
     private Note note;

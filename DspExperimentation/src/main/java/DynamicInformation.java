@@ -3,6 +3,10 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+/**
+ * Class for calculating the dynamic information of a signal e.g. changes in Amplitude, rather than
+ * changes in frequency.
+ */
 public class DynamicInformation {
 
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
@@ -12,12 +16,18 @@ public class DynamicInformation {
     private static int SILENCE_WIDTH_THRESHOLD = 8000;      // account for reverb & tail
     private static int SILENCE_LOOKAHEAD = 1000;
 
+    /**
+     * Method to return the indices where each note in the sequence starts
+     * @param originalSignal signal array
+     * @param samplingPeriod sampling period of signal
+     * @return list of indices where notes start
+     */
     public static List<Integer> calculateNoteStartingIndices(double[] originalSignal, double samplingPeriod) {
 
         // remove any silence (at the start or between notes)
-        // TO DO: go through array & copy in any stretches of silence
         double[] signal = trim(originalSignal);
         int lengthOfSilence = originalSignal.length - signal.length;
+        // find first transient in signal
         int firstTransient = findFirstTransient(signal);
         int nextPeakWithLookahead = trendingUp(signal, firstTransient);
         int peakN = nextPeakWithLookahead;
@@ -32,12 +42,8 @@ public class DynamicInformation {
             }
         }
         // once while terminates peakN_1 == peakN must be true so peakN is last highest
-        // peak with lookahead
-
-        // go through rest of signal & find similar peaks
+        // go through rest of signal & find similar peaks to peakN
         List<Integer> peakIndexes = findPeaks(signal, peakN);
-
-        // look for periods of silence in signal
 
         // found peaks of signal (size of peakIndexes should == # of notes)
         // find beginning of note
@@ -47,6 +53,7 @@ public class DynamicInformation {
             if(peakIndexes.indexOf(peakIndex) == 0) {
                 startIndicesOfNotes.add(lengthOfSilence + 1);
             } else {
+                // otherwise, just subtract from peak
                 startIndicesOfNotes.add(findBeginningOfPeak(signal, peakIndex));
             }
         }
@@ -54,6 +61,15 @@ public class DynamicInformation {
         return startIndicesOfNotes;
     }
 
+    /**
+     * Method for calculating the length of notes in seconds given arrays representing the indices of notes
+     * & silence.
+     * @param startIndicesOfNotes array of indices of notes in signal array
+     * @param indicesOfSilence array of indices of silence in signal array
+     * @param signal signal array
+     * @param samplingPeriod sampling period of signal
+     * @return list of note lengths in seconds 
+     */
     public static List<Double> calculateNoteLengthInSeconds(List<Integer> startIndicesOfNotes, List<Integer> indicesOfSilence, double[] signal, double samplingPeriod) {
         // calculate time between each note
         List<Double> noteLengthsInSecs = new ArrayList<>();
@@ -83,6 +99,12 @@ public class DynamicInformation {
         return noteLengthsInSecs;
     }
 
+    /**
+     * Method for finding peaks in a signal of a similar or greater amplitude to a given peak
+     * @param signal signal array
+     * @param peakN index of peak in array to measure other peaks against
+     * @return list of peaks in signal array
+     */
     private static List<Integer> findPeaks(double[] signal, Integer peakN) {
         List<Integer> peakIndexes = new LinkedList<>();
         peakIndexes.add(peakN);
@@ -93,15 +115,16 @@ public class DynamicInformation {
             double[] nextSliceOfArray;
             if(peakIndexes.size() > peaksFound) {
                 startIndex = (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) < signal.length ? (peakIndexes.get(peaksFound) + PEAK_WIDTH_THRESHOLD) : startIndex;
+                // if we aren't at the end of the array, cut into slices
                 if (startIndex + LOOKAHEAD < signal.length) {
                     nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, startIndex + LOOKAHEAD);
                 } else {
+                    // otherwise, just cut to the end of the array
                     nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, signal.length);
                 }
                 peaksFound++;
             } else {
-                // otherwise, just increment through normally - cutting array into slices
-                // of size == LOOKAHEAD
+                // otherwise, just increment through normally - cutting array into slices of size == LOOKAHEAD
                 if (startIndex + LOOKAHEAD < signal.length) {
                     startIndex+=LOOKAHEAD;
                     nextSliceOfArray = Arrays.copyOfRange(signal, startIndex, startIndex + LOOKAHEAD);
@@ -110,7 +133,7 @@ public class DynamicInformation {
                     startIndex+=LOOKAHEAD;
                 }
             }
-            // use peak value found as a
+            // use peak value as a metric to measure other peaks against
             double peakValue = signal[peakN];
             for (int i = 0; i < nextSliceOfArray.length; i++) {
                 double value = nextSliceOfArray[i];
@@ -123,6 +146,12 @@ public class DynamicInformation {
         return peakIndexes;
     }
 
+    /**
+     * Method for calculating the start of a peak given the peak.
+     * @param signal signal array
+     * @param peakIndex index of peak
+     * @return index where given peak starts
+     */
     private static Integer findBeginningOfPeak(double[] signal, Integer peakIndex) {
         if((peakIndex-(PEAK_WIDTH_THRESHOLD/2)) > 0) {
             return peakIndex - (PEAK_WIDTH_THRESHOLD/2);
@@ -131,6 +160,11 @@ public class DynamicInformation {
         }
     }
 
+    /**
+     * Method to trim silence from the start of a signal.
+     * @param originalSignal signal array
+     * @return signal array with silence removed
+     */
     private static double[] trim(double[] originalSignal) {
         // first trim any silence from the beginning of signal
         int inc = 0;
@@ -141,6 +175,12 @@ public class DynamicInformation {
         return Arrays.copyOfRange(originalSignal,inc,originalSignal.length);
     }
 
+    /**
+     * Method to calculate increasing volume in a signal
+     * @param signal signal array
+     * @param firstPeak start of increase in volume
+     * @return index of the highest part of peak that starts at firstPeak
+     */
     private static int trendingUp(double[] signal, int firstPeak) {
         double firstPeakValue = signal[firstPeak];
         double peakValue = signal[firstPeak];
@@ -164,55 +204,11 @@ public class DynamicInformation {
         return firstPeak;
     }
 
-    private static int trendingDown(double[] signal, int firstPeak) {
-        double peakValue = signal[firstPeak];
-        int startOfArray = firstPeak+1; // copy from next index after peak
-        signal = Arrays.copyOfRange(signal, startOfArray, signal.length);
-        double newPeak = 0.0;
-        int innerInc = 0;
-        int newPeakIndex = 0;
-        int peakIndex = 0;
-        while(innerInc < LOOKAHEAD) {
-            // calculates top value in next X samples (if peak not surpassed)
-            if(signal[innerInc] > newPeak) {
-                newPeak = signal[innerInc];
-                newPeakIndex = innerInc;
-            }
-            innerInc++;
-        }
-        // if this is very next value get average then get the closest value & return the index of this
-        if(newPeakIndex == 0) {
-            int avInc = 0;
-            double avValue = 0;
-            // step through any silence or -0 values
-            while(avInc < signal.length && signal[avInc] <= 0) {
-                avInc++;
-            }
-            int div = 0;
-            while(avInc < signal.length && signal[avInc] > 0) {
-                avValue+=signal[avInc];
-                avInc++;
-                div++;
-            }
-            // THIS IS TENDING TO PICK DIV/2 - SAFE TO SIMPLIFY TO THIS???????
-            double averageValue = avValue/div;
-            double diff = Integer.MAX_VALUE;
-            int revInc = div-1;
-            int closestValueIndex = revInc;
-            while(revInc >= 0 && signal[revInc] > 0) {
-                double currentDif = Math.abs(averageValue - signal[revInc]);
-                if(currentDif < diff) {
-                    diff = currentDif;
-                    closestValueIndex = revInc;
-                }
-                revInc--;
-            }
-            return startOfArray+closestValueIndex;
-        } else {
-            return startOfArray+newPeakIndex;
-        }
-    }
-
+    /**
+     * Method for finding the first transient in a signal.
+     * @param signal signal array
+     * @return index of first transient
+     */
     private static int findFirstTransient(double[] signal) {
         int trnsnt = -1;
         double topValue = 0;
@@ -233,6 +229,11 @@ public class DynamicInformation {
         return trnsnt;
     }
 
+    /**
+     * Method to calculate periods of silence in the given signal array
+     * @param signal signal array
+     * @return list of indices of silence in array, e.g. [1,5] if signal has a period of silence from 1 to 5
+     */
     public static List<Integer> calculateSilenceIndices(double[] signal) {
         signal = trim(signal);
         List<Integer> silenceIndices = new ArrayList<>();

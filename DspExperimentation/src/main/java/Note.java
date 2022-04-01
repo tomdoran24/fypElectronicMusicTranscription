@@ -1,3 +1,6 @@
+/**
+ * Enum representing musical notes, with their frequency information
+ */
 public enum Note {
     C(16.352,   "C"),
     Db(17.324,  "Db"),
@@ -71,7 +74,7 @@ public enum Note {
 
     private double freq;
     private String value;
-    private Note(double freq, String value) {
+    Note(double freq, String value) {
         this.freq = freq;
         this.value = value;
     }
@@ -80,10 +83,11 @@ public enum Note {
         return freq;
     }
 
-    public String getValue() {
-        return value;
-    }
-
+    /**
+     * Method for rounding a given frequency to the nearest note.
+     * @param freq given frequency
+     * @return Note closest to given frequency
+     */
     public static Note roundFreqToNearestNote(double freq) {
         Note upperBound = null;
         Note lowerBound = null;
@@ -92,10 +96,11 @@ public enum Note {
             if(upperBound != null && lowerBound != null) {
                 break;
             } else {
-                // otherwise, test against values
+                // otherwise, update bounds until we find the closets frequencies
                 if(note.getFreq() < freq) {
                     lowerBound = note;
                 }
+                // lower bound will repeatedly update until upper bound is updated
                 if(note.getFreq() > freq) {
                     upperBound = note;
                 }
@@ -109,6 +114,7 @@ public enum Note {
                 return upperBound;
             }
         } else {
+            // in the event we have failed to discover an upper bound, return the lower bound (this is likely to be the top note of the enum)
             return upperBound == null ? lowerBound : upperBound;
         }
     }
