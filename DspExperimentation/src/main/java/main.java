@@ -11,7 +11,7 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException, InvalidMidiDataException {
 
         // import file
-        String fileName = "guitar";
+        String fileName = "sine_tone_Bb0";
         File file = new File("/Users/tomdoran/Desktop/FYP WAV files/" + fileName + ".wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
@@ -71,7 +71,13 @@ public class main {
         List<MIDI> rightChannel = bothChannelsMidiInformation.get(1);
         int leftInc = 0;
         int rightInc = 0;
-        while(leftInc + rightInc < (rightChannel.size() + leftChannel.size() - 2)) {
+        int upperBound = 0;
+        if(leftInc > rightInc) {
+            upperBound = leftChannel.size();
+        } else {
+            upperBound = rightChannel.size();
+        }
+        while(leftInc < upperBound && rightInc < upperBound) {
             if (rightInc < rightChannel.size()) {
                 // if both sides are different, include both
                 if (!leftChannel.contains(rightChannel.get(rightInc)) && !finalMidi.contains(rightChannel.get(rightInc))) {
