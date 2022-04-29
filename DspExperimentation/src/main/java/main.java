@@ -11,7 +11,7 @@ public class main {
     public static void main(String[] args) throws UnsupportedAudioFileException, IOException, WavFileException, LineUnavailableException, InvalidMidiDataException {
 
         // import file
-        String fileName = "sine_tone_Bb0";
+        String fileName = "sine_tone_G1";
         File file = new File("/Users/tomdoran/Desktop/FYP WAV files/" + fileName + ".wav");
         AudioFileFormat fileFormat = AudioSystem.getAudioFileFormat(file);
         AudioInputStream audioStream = AudioSystem.getAudioInputStream(file);
@@ -47,7 +47,7 @@ public class main {
         // set key signature
         Key key = null;
         // if only 1 key detected
-        if(keySignature.size() == 1) {
+        if(keySignature.size() > 0) {
             key = (Key) keySignature.stream().toArray()[0];
         }
 

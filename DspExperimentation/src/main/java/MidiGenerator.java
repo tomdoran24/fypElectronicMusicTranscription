@@ -68,7 +68,10 @@ public class MidiGenerator {
         me = new MidiEvent(mt, new Double(signalLength / track.ticks()).longValue());
         track.add(me);
 
-        String prefix = "_" + keySignature.getName() + "_";
+        String prefix = "";
+        if(keySignature != null) {
+            prefix = "_" + keySignature.getName() + "_";
+        }
         SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yy_HH-mm", Locale.ENGLISH);
         String dateStr = sdf.format(new Date());
 

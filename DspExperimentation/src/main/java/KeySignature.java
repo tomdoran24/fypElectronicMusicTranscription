@@ -48,32 +48,32 @@ public class KeySignature {
 enum Key {
 
     // Major keys
-    C_MAJOR(    "C Major",  Note.C,     Signature.MAJOR,    Note.A),
-    Db_MAJOR(   "Db Major", Note.Db,    Signature.MAJOR,    Note.Bb),
-    D_MAJOR(    "D Major",  Note.D,     Signature.MAJOR,    Note.B),
-    Eb_MAJOR(   "Eb Major", Note.Eb,    Signature.MAJOR,    Note.C),
-    E_MAJOR(    "E Major",  Note.E,     Signature.MAJOR,    Note.Db),
-    F_MAJOR(    "F Major",  Note.F,     Signature.MAJOR,    Note.D),
-    Gb_MAJOR(   "Gb Major", Note.Gb,    Signature.MAJOR,    Note.Eb),
-    G_MAJOR(    "G Major",  Note.G,     Signature.MAJOR,    Note.E),
-    Ab_MAJOR(   "Ab Major", Note.Ab,    Signature.MAJOR,    Note.F),
-    A_MAJOR(    "A Major",  Note.A,     Signature.MAJOR,    Note.Gb),
-    Bb_MAJOR(   "Bb Major", Note.Bb,    Signature.MAJOR,    Note.G),
-    B_MAJOR(    "B Major",  Note.B,     Signature.MAJOR,    Note.Ab),
+    C_MAJOR(    "C Major",  Note.C_Minus2,     Signature.MAJOR,    Note.A_Minus2),
+    Db_MAJOR(   "Db Major", Note.Db_Minus2,    Signature.MAJOR,    Note.Bb_Minus2),
+    D_MAJOR(    "D Major",  Note.D_Minus2,     Signature.MAJOR,    Note.B_Minus2),
+    Eb_MAJOR(   "Eb Major", Note.Eb_Minus2,    Signature.MAJOR,    Note.C_Minus2),
+    E_MAJOR(    "E Major",  Note.E_Minus2,     Signature.MAJOR,    Note.Db_Minus2),
+    F_MAJOR(    "F Major",  Note.F_Minus2,     Signature.MAJOR,    Note.D_Minus2),
+    Gb_MAJOR(   "Gb Major", Note.Gb_Minus2,    Signature.MAJOR,    Note.Eb_Minus2),
+    G_MAJOR(    "G Major",  Note.G_Minus2,     Signature.MAJOR,    Note.E_Minus2),
+    Ab_MAJOR(   "Ab Major", Note.Ab_Minus2,    Signature.MAJOR,    Note.F_Minus2),
+    A_MAJOR(    "A Major",  Note.A_Minus2,     Signature.MAJOR,    Note.Gb_Minus2),
+    Bb_MAJOR(   "Bb Major", Note.Bb_Minus2,    Signature.MAJOR,    Note.G_Minus2),
+    B_MAJOR(    "B Major",  Note.B_Minus2,     Signature.MAJOR,    Note.Ab_Minus2),
 
     // Minor Keys
-    C_MINOR(    "C Minor",  Note.C,     Signature.MINOR,    Note.Eb),
-    Db_MINOR(   "Db Minor", Note.Db,    Signature.MINOR,    Note.E),
-    D_MINOR(    "D Minor",  Note.D,     Signature.MINOR,    Note.F),
-    Eb_MINOR(   "Eb Minor", Note.Eb,    Signature.MINOR,    Note.Gb),
-    E_MINOR(    "E Minor",  Note.E,     Signature.MINOR,    Note.G),
-    F_MINOR(    "F Minor",  Note.F,     Signature.MINOR,    Note.Ab),
-    Gb_MINOR(   "Gb Minor", Note.Gb,    Signature.MINOR,    Note.A),
-    G_MINOR(    "G Minor",  Note.G,     Signature.MINOR,    Note.Bb),
-    Ab_MINOR(   "Ab Minor", Note.Ab,    Signature.MINOR,    Note.B),
-    A_MINOR(    "A Minor",  Note.A,     Signature.MINOR,    Note.C),
-    Bb_MINOR(   "Bb Minor", Note.Bb,    Signature.MINOR,    Note.Db),
-    B_MINOR(    "B Minor",  Note.B,     Signature.MINOR,    Note.D);
+    C_MINOR(    "C Minor",  Note.C_Minus2,     Signature.MINOR,    Note.Eb_Minus2),
+    Db_MINOR(   "Db Minor", Note.Db_Minus2,    Signature.MINOR,    Note.E_Minus2),
+    D_MINOR(    "D Minor",  Note.D_Minus2,     Signature.MINOR,    Note.F_Minus2),
+    Eb_MINOR(   "Eb Minor", Note.Eb_Minus2,    Signature.MINOR,    Note.Gb_Minus2),
+    E_MINOR(    "E Minor",  Note.E_Minus2,     Signature.MINOR,    Note.G_Minus2),
+    F_MINOR(    "F Minor",  Note.F_Minus2,     Signature.MINOR,    Note.Ab_Minus2),
+    Gb_MINOR(   "Gb Minor", Note.Gb_Minus2,    Signature.MINOR,    Note.A_Minus2),
+    G_MINOR(    "G Minor",  Note.G_Minus2,     Signature.MINOR,    Note.Bb_Minus2),
+    Ab_MINOR(   "Ab Minor", Note.Ab_Minus2,    Signature.MINOR,    Note.B_Minus2),
+    A_MINOR(    "A Minor",  Note.A_Minus2,     Signature.MINOR,    Note.C_Minus2),
+    Bb_MINOR(   "Bb Minor", Note.Bb_Minus2,    Signature.MINOR,    Note.Db_Minus2),
+    B_MINOR(    "B Minor",  Note.B_Minus2,     Signature.MINOR,    Note.D_Minus2);
 
 
     private String name;
