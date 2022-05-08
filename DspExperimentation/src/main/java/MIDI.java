@@ -1,3 +1,6 @@
+/**
+ * Intermediate representation of MIDI data in the system.
+ */
 public class MIDI {
 
     private Note note;

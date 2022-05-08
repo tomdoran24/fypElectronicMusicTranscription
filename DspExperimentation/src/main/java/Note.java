@@ -1,44 +1,51 @@
+/**
+ * Class representing notes, specifically used for mapping frequency to musical notes
+ * reference for frequency data: https://pages.mtu.edu/~suits/notefreqs.html
+ */
 public enum Note {
-    C_Minus2(16.352,   "C"),
-    Db_Minus2(17.324,  "Db"),
-    D_Minus2(18.354,   "D"),
-    Eb_Minus2(19.445,  "Eb"),
-    E_Minus2(20.602,   "E"),
-    F_Minus2(21.827,   "F"),
-    Gb_Minus2(23.125,  "Gb"),
-    G_Minus2(24.500,   "G"),
-    Ab_Minus2(25.957,  "Ab"),
-    A_Minus2(27.500,   "A"),
-    Bb_Minus2(29.135,  "Bb"),
-    B_Minus2(30.868,   "B"),
+    // OCT -1
+    C_Minus1(16.352,   "C-1"),
+    Db_Minus1(17.324,  "Db-1"),
+    D_Minus1(18.354,   "D-1"),
+    Eb_Minus1(19.445,  "Eb-1"),
+    E_Minus1(20.602,   "E-1"),
+    F_Minus1(21.827,   "F-1"),
+    Gb_Minus1(23.125,  "Gb-1"),
+    G_Minus1(24.500,   "G-1"),
+    Ab_Minus1(25.957,  "Ab-1"),
+    A_Minus1(27.500,   "A-1"),
+    Bb_Minus1(29.135,  "Bb-1"),
+    B_Minus1(30.868,   "B-1"),
 
-    C_Minus1(32.70,   "C"),
-    Db_Minus1(34.65,  "Db"),
-    D_Minus1(36.71,   "D"),
-    Eb_Minus1(38.89,  "Eb"),
-    E_Minus1(41.20,   "E"),
-    F_Minus1(43.65,   "F"),
-    Gb_Minus1(46.25,  "Gb"),
-    G_Minus1(49,   "G"),
-    Ab_Minus1(51.91,  "Ab"),
-    A_Minus1(55,   "A"),
-    Bb_Minus1(58.27,  "Bb"),
-    B_Minus1(61.74,   "B"),
+    // OCT 0
+    C0(32.70,   "C"),
+    Db0(34.65,  "Db"),
+    D0(36.71,   "D"),
+    Eb0(38.89,  "Eb"),
+    E0(41.20,   "E"),
+    F0(43.65,   "F"),
+    Gb0(46.25,  "Gb"),
+    G0(49,   "G"),
+    Ab0(51.91,  "Ab"),
+    A0(55,   "A"),
+    Bb0(58.27,  "Bb"),
+    B0(61.74,   "B"),
 
-    C0(65.41,   "C"),
-    Db0(69.3,  "Db"),
-    D0(73.42,   "D"),
-    Eb0(77.78,  "Eb"),
-    E0(82.41,   "E"),
-    F0(87.31,   "F"),
-    Gb0(92.5,  "Gb"),
-    G0(98,   "G"),
-    Ab0(103.83,  "Ab"),
-    A0(110,   "A"),
-    Bb0(116.54,  "Bb"),
-
+    // OCT 1
+    C1(65.41,   "C1"),
+    Db1(69.3,  "Db1"),
+    D1(73.42,   "D1"),
+    Eb1(77.78,  "Eb1"),
+    E1(82.41,   "E1"),
+    F1(87.31,   "F1"),
+    Gb1(92.5,  "Gb1"),
+    G1(98,   "G1"),
+    Ab1(103.83,  "Ab1"),
+    A1(110,   "A1"),
+    Bb1(116.54,  "Bb1"),
     B1(123.47,   "B1"),
-    // OCT 2                        // (2 on Logic, 3 on https://pages.mtu.edu/~suits/notefreqs.html)
+
+    // OCT 2        (2 on Logic, 3 on https://pages.mtu.edu/~suits/notefreqs.html)
     C2(130.81,   "C2"),
     Db2(138.59,  "Db2"),
     D2(146.83,   "D2"),
@@ -96,7 +103,7 @@ public enum Note {
 
     private double freq;
     private String value;
-    private Note(double freq, String value) {
+    Note(double freq, String value) {
         this.freq = freq;
         this.value = value;
     }
@@ -109,6 +116,12 @@ public enum Note {
         return value;
     }
 
+    /**
+     * Method to round a given frequency to the nearest note.
+     *
+     * @param freq frequency to round
+     * @return nearest note
+     */
     public static Note roundFreqToNearestNote(double freq) {
         Note upperBound = null;
         Note lowerBound = null;
@@ -138,6 +151,11 @@ public enum Note {
         }
     }
 
+    /**
+     * Method to parse a note given its string value
+     * @param s string value
+     * @return note
+     */
     private Note parseNote(String s) {
         for(Note note : Note.values()) {
             if(note.getValue().equals(s))
@@ -146,12 +164,17 @@ public enum Note {
         return null;
     }
 
+    /**
+     * Method to convert a note to the same note in the lowest  octave.
+     *
+     * @return note in the lowest octave
+     */
     public Note convertToZeroOctave() {
         if(this.getValue().length() > 1) {
             // at this point it could be a zero octave flat or a higher octave
             if(this.getValue().charAt(this.getValue().length()-1) != 'b') {
                 // at this point it must be a note that ends in a number, so take the number off & parse
-                return parseNote(this.getValue().substring(0, this.getValue().length()-1));
+                return parseNote(this.getValue().substring(0, this.getValue().length()-1)+"-1");
             } else {
                 // otherwise, it must be a zero octave flat, so just return
                 return this;

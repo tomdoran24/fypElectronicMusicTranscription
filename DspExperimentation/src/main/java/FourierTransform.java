@@ -1,6 +1,3 @@
-
-
-import com.github.psambit9791.jdsp.transform.DiscreteFourier;
 import org.apache.commons.math3.complex.Complex;
 import org.apache.commons.math3.transform.DftNormalization;
 import org.apache.commons.math3.transform.FastFourierTransformer;
@@ -8,40 +5,51 @@ import org.apache.commons.math3.transform.TransformType;
 
 import java.util.*;
 
-public class AutocorrelationByFourier {
+/**
+ * Class for performing Fourier Transform using FastFourierTransformer.
+ */
+public class FourierTransform {
 
-    public static List<Double> runAutocorrellationByFourier(double[] signal) {
-
+    /**
+     * Method to run FFT on an audio signal array.
+     *
+     * @param signal signal array
+     * @return Fourier transform output as list of Double
+     */
+    public static List<Double> runFFT(double[] signal) {
         // take FFT of signal
-        // take complex conj
-        // multiply two together
         FastFourierTransformer fft = new FastFourierTransformer(DftNormalization.STANDARD);
         double[] subSignal = Arrays.copyOf(signal, 65536);
-        /*Complex[] comSig = new Complex[65536];
-        for(int i = 0; i<65535;i++) {
-            comSig[i] = new Complex(signal[i]);
-        }*/
         Complex[] fftResult = fft.transform(subSignal, TransformType.FORWARD);
-        //Complex[] fftResult = FastFourierTransform.fft(comSig);
         Complex[] conjResult = new Complex[fftResult.length];
 
+        // take complex conjugate
         for(int i=0;i< fftResult.length;i++) {
             conjResult[i] = fftResult[i].conjugate();
         }
 
+        // multiple conjugate with original value
         Complex[] convolution = new Complex[conjResult.length];
         for(int i=0;i<conjResult.length;i++) {
             convolution[i] = conjResult[i].multiply(fftResult[i]);
         }
 
+        // remove imaginary from result & return
         List<Double> convolutionAbsolute = new ArrayList<>();
         for(Complex complex : conjResult) {
             convolutionAbsolute.add(complex.abs());
         }
-
         return convolutionAbsolute;
     }
 
+    /**
+     * Method for extracting dominant frequencies & other significant frequencies
+     * present in a Fourier Transform output.
+     *
+     * @param fourierResult fourier transform output
+     * @param sampleRate sample rate of WAV file
+     * @return Map with list of dominant frequencies as key & other significant frequencies as value
+     */
     public static Map<List<Double>,List<Double>> extractFourierInformation(List<Double> fourierResult, double sampleRate) {
         double peakValue = 0;
         int peakIndex = 0;
@@ -79,33 +87,5 @@ public class AutocorrelationByFourier {
         Map<List<Double>,List<Double>> result = new HashMap<>();
         result.put(peakFreqs, otherPeaksFreq);
         return result;
-    }
-
-    private static double getFundamentalFreqFromFourier(List<Double> fourierResult, double sampleRate) {
-        // will need to walk through (half of) the result & record the highest peak
-        double peakValue = 0;
-        int peakIndex = 0;
-        for (int i = 0; i < fourierResult.size() / 2; i++) {
-            if (fourierResult.get(i) > peakValue) {
-                peakValue = fourierResult.get(i);
-                peakIndex = i;
-            }
-        }
-        // once peak has been found, calculate frequency
-        return ((double) (peakIndex + 1) / fourierResult.size()) * sampleRate;
-    }
-
-    public static double getFundamentalFreq(List<Double> fourierResult, double sampleRate) {
-        // will need to walk through (half of) the result & record the highest peak
-        double peakValue = 0;
-        int peakIndex = 0;
-        for (int i = 0; i < fourierResult.size() / 2; i++) {
-            if (fourierResult.get(i) > peakValue) {
-                peakValue = fourierResult.get(i);
-                peakIndex = i;
-            }
-        }
-        // once peak has been found, calculate frequency
-        return ((double) (peakIndex + 1) / fourierResult.size()) * sampleRate;
     }
 }

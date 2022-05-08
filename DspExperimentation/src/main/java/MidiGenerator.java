@@ -8,8 +8,21 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * Class for the final step of converting intermediate MIDI data to actual .mid file
+ */
 public class MidiGenerator {
 
+    /**
+     * Method to generate a .mid file from a list of MIDI data.
+     *
+     * @param midiData list of MIDI data
+     * @param keySignature key signature of piece
+     * @param signalLength length of original signal
+     * @param fileName name specified for output .mid file
+     * @throws InvalidMidiDataException
+     * @throws IOException
+     */
     public static void generateMidi(List<MIDI> midiData, Key keySignature, int signalLength, String fileName) throws InvalidMidiDataException, IOException {
 
         Sequence seq = new Sequence(Sequence.PPQ, 24);
@@ -36,13 +49,13 @@ public class MidiGenerator {
         me = new MidiEvent(mt,(long)0);
         track.add(me);
 
-        //****  set omni on  ****
+        // set omni on
         ShortMessage mm = new ShortMessage();
         mm.setMessage(0xB0, 0x7D,0x00);
         me = new MidiEvent(mm,(long)0);
         track.add(me);
 
-        //****  set poly on  ****
+        // set poly on
         mm = new ShortMessage();
         mm.setMessage(0xB0, 0x7F,0x00);
         me = new MidiEvent(mm,(long)0);
@@ -61,7 +74,7 @@ public class MidiGenerator {
             track.add(noteOffEvent);
         }
 
-        //****  set end of track (meta event) 19 ticks later  ****
+        // set end of track (meta event)
         mt = new MetaMessage();
         byte[] bet = {}; // empty array
         mt.setMessage(0x2F,bet,0);
@@ -77,6 +90,5 @@ public class MidiGenerator {
 
         MidiFileWriter fileWriter = new MidiFileWriterImpl();
         fileWriter.write(seq, 1, new File(fileName+prefix+dateStr+".mid"));
-
     }
 }

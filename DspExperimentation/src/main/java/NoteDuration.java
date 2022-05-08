@@ -1,6 +1,8 @@
-import java.time.Duration;
 import java.util.*;
 
+/**
+ * Class for detecting the position & duration of notes in a signal array.
+ */
 public class NoteDuration {
 
     private static int TRANSIENT_PASSED_THRESHOLD = 100;
@@ -10,12 +12,17 @@ public class NoteDuration {
     private static int SILENCE_WIDTH_THRESHOLD = 8000;      // account for reverb & tail
     private static int SILENCE_LOOKAHEAD = 1000;
 
+    /**
+     * Method for calculating the starting positions of notes in a signal array.
+     *
+     * @param originalSignal signal array
+     * @param samplingPeriod sampling period of WAV file
+     * @return list of note indices
+     */
     public static List<Integer> calculateNoteStartingIndices(double[] originalSignal, double samplingPeriod) {
 
         // remove any silence (at the start or between notes)
-        // TO DO: go through array & copy in any stretches of silence
         double[] signal = trim(originalSignal);
-        int lengthOfSilence = originalSignal.length - signal.length;
         int firstTransient = findFirstTransient(signal);
         // set sensitivity threshold
         int nextPeakWithLookahead = trendingUp(signal, firstTransient);
@@ -31,29 +38,28 @@ public class NoteDuration {
             }
         }
         // once while terminates peakN_1 == peakN must be true so peakN is last highest
-        // peak with lookahead
-
-        // go through rest of signal & find similar peaks
         SENSITIVITY_THRESHOLD = signal[peakN] * 0.9999;
+        // go through rest of signal & find similar peaks
         List<Integer> peakIndexes = findPeaks(signal, peakN);
 
-        // look for periods of silence in signal
-
-        // found peaks of signal (size of peakIndexes should == # of notes)
-        // find beginning of note
+        // once found peaks of signal (size of peakIndexes should == # of notes), calculate start indices & return
         List<Integer> startIndicesOfNotes = new ArrayList<>();
         for(Integer peakIndex : peakIndexes) {
-            // for first, use silence
-            if(peakIndexes.indexOf(peakIndex) == 0) {
-                startIndicesOfNotes.add(lengthOfSilence + 1);
-            } else {
-                startIndicesOfNotes.add(findBeginningOfPeak(signal, peakIndex));
-            }
+            // find beginning of note
+            startIndicesOfNotes.add(findBeginningOfPeak(peakIndex));
         }
-
         return startIndicesOfNotes;
     }
 
+    /**
+     * Method for calculating the length of notes in the piece in seconds.
+     *
+     * @param startIndicesOfNotes list of indices of notes in the signal array
+     * @param indicesOfSilence list of indices of silence in the signal array
+     * @param signal signal array
+     * @param samplingPeriod sampling period of the WAV file
+     * @return list of lengths of notes in seconds
+     */
     public static List<Double> calculateNoteLengthInSeconds(List<Integer> startIndicesOfNotes, List<Integer> indicesOfSilence, double[] signal, double samplingPeriod) {
         // calculate time between each note
         List<Double> noteLengthsInSecs = new ArrayList<>();
@@ -78,11 +84,17 @@ public class NoteDuration {
                 }
             }
         }
-
         // run FFTs on each section
         return noteLengthsInSecs;
     }
 
+    /**
+     * Method to find further peaks in a signal given its first peak.
+     *
+     * @param signal signal array
+     * @param peakN first peak of signal
+     * @return list of other peaks in the signal
+     */
     private static List<Integer> findPeaks(double[] signal, Integer peakN) {
         List<Integer> peakIndexes = new LinkedList<>();
         peakIndexes.add(peakN);
@@ -126,7 +138,13 @@ public class NoteDuration {
         return peakIndexes;
     }
 
-    private static Integer findBeginningOfPeak(double[] signal, Integer peakIndex) {
+    /**
+     * Method to 'walk back down' first signal array peak to find the index of the transient.
+     *
+     * @param peakIndex index of first peak
+     * @return index of transient
+     */
+    private static Integer findBeginningOfPeak(Integer peakIndex) {
         if((peakIndex-(PEAK_WIDTH_THRESHOLD/2)) > 0) {
             return peakIndex - (PEAK_WIDTH_THRESHOLD/2);
         } else {
@@ -134,16 +152,28 @@ public class NoteDuration {
         }
     }
 
+    /**
+     * Method to trim silence from the beginning of signal array.
+     *
+     * @param originalSignal signal array
+     * @return signal array without silence at the beginning
+     */
     private static double[] trim(double[] originalSignal) {
         // first trim any silence from the beginning of signal
         int inc = 0;
         while(originalSignal[inc] == 0 && inc < originalSignal.length) {
             inc++;
         }
-        //double[] newList = Arrays.copyOfRange(originalSignal,inc,originalSignal.length);
         return Arrays.copyOfRange(originalSignal,inc,originalSignal.length);
     }
 
+    /**
+     * Method to detect if a signal continues to increase in amplitude using lookahead.
+     *
+     * @param signal signal array
+     * @param firstPeak index of first peak in signal
+     * @return new peak if signal trending up, first peak if not
+     */
     private static int trendingUp(double[] signal, int firstPeak) {
         double firstPeakValue = signal[firstPeak];
         double peakValue = signal[firstPeak];
@@ -152,7 +182,6 @@ public class NoteDuration {
         int innerInc = 0;
         int peakIndex = 0;
         while(innerInc < LOOKAHEAD) {
-            // this will be biased towards identifying a downwards trend
             if(signal[innerInc] > peakValue) {
                 peakValue = signal[innerInc];
                 peakIndex = innerInc;
@@ -167,55 +196,12 @@ public class NoteDuration {
         return firstPeak;
     }
 
-    private static int trendingDown(double[] signal, int firstPeak) {
-        double peakValue = signal[firstPeak];
-        int startOfArray = firstPeak+1; // copy from next index after peak
-        signal = Arrays.copyOfRange(signal, startOfArray, signal.length);
-        double newPeak = 0.0;
-        int innerInc = 0;
-        int newPeakIndex = 0;
-        int peakIndex = 0;
-        while(innerInc < LOOKAHEAD) {
-            // calculates top value in next X samples (if peak not surpassed)
-            if(signal[innerInc] > newPeak) {
-                newPeak = signal[innerInc];
-                newPeakIndex = innerInc;
-            }
-            innerInc++;
-        }
-        // if this is very next value get average then get the closest value & return the index of this
-        if(newPeakIndex == 0) {
-            int avInc = 0;
-            double avValue = 0;
-            // step through any silence or -0 values
-            while(avInc < signal.length && signal[avInc] <= 0) {
-                avInc++;
-            }
-            int div = 0;
-            while(avInc < signal.length && signal[avInc] > 0) {
-                avValue+=signal[avInc];
-                avInc++;
-                div++;
-            }
-            // THIS IS TENDING TO PICK DIV/2 - SAFE TO SIMPLIFY TO THIS???????
-            double averageValue = avValue/div;
-            double diff = Integer.MAX_VALUE;
-            int revInc = div-1;
-            int closestValueIndex = revInc;
-            while(revInc >= 0 && signal[revInc] > 0) {
-                double currentDif = Math.abs(averageValue - signal[revInc]);
-                if(currentDif < diff) {
-                    diff = currentDif;
-                    closestValueIndex = revInc;
-                }
-                revInc--;
-            }
-            return startOfArray+closestValueIndex;
-        } else {
-            return startOfArray+newPeakIndex;
-        }
-    }
-
+    /**
+     * Method to find the first peak in a signal.
+     *
+     * @param signal signal array
+     * @return index of first peak
+     */
     private static int findFirstTransient(double[] signal) {
         int trnsnt = -1;
         double topValue = 0;
@@ -236,6 +222,12 @@ public class NoteDuration {
         return trnsnt;
     }
 
+    /**
+     * Method for finding the indices of silence in a signal array.
+     *
+     * @param signal signal array
+     * @return list of indices of silence
+     */
     public static List<Integer> calculateSilenceIndices(double[] signal) {
         signal = trim(signal);
         List<Integer> silenceIndices = new ArrayList<>();
@@ -255,89 +247,5 @@ public class NoteDuration {
             }
         }
         return silenceIndices;
-    }
-
-    public static List<Integer> mergeDuplicateNotes(List<Integer> indicesOfNotes, List<Integer> indicesOfSilence, double[] originalSignal, double samplingFreq) {
-
-        List<Map<List<Double>, List<Double>>> fourierResults = new ArrayList<>();
-        int startingIndex = indicesOfNotes.get(0);
-        int count = 1;
-        while(count <= indicesOfNotes.size()) {
-            double[] noteArray = count != indicesOfNotes.size() ? Arrays.copyOfRange(originalSignal, startingIndex, indicesOfNotes.get(count)) : Arrays.copyOfRange(originalSignal, startingIndex, originalSignal.length);
-            Map<List<Double>, List<Double>> fourierResult = AutocorrelationByFourier.extractFourierInformation(AutocorrelationByFourier.runAutocorrellationByFourier(noteArray), samplingFreq);
-            fourierResults.add(fourierResult);
-            count++;
-        }
-
-        List<Integer> noteIndicesToRemove = new ArrayList<>();
-        for(int i = 0; i < fourierResults.size()-1; i++) {
-            // if notes have no silence between them & the same dominant freq, assume this is the same note
-            int currIndex = indicesOfNotes.get(i);
-            int nextIndex = indicesOfNotes.get(i+1);
-            // if there's an index of silence before next index
-            int inc = 0;
-            boolean silenceBetweenNotes = false;
-            while(inc < indicesOfSilence.size()) {
-                if(indicesOfSilence.get(inc) < nextIndex && indicesOfSilence.get(inc) > currIndex) {
-                    silenceBetweenNotes = true;
-                }
-                inc++;
-            }
-            if(!silenceBetweenNotes) {
-                // check if the fundamental freqs are the same
-                Map<List<Double>, List<Double>> currFourierResult = fourierResults.get(i);
-                Map<List<Double>, List<Double>> nextFourierResult = fourierResults.get(i + 1);
-
-                List<Double> currFundFreqs = new ArrayList<>(currFourierResult.keySet()).get(0);
-                List<Double> nextFundFreqs = new ArrayList<>(nextFourierResult.keySet()).get(0);
-
-                Set<Note> sharedFundamentalNotes = new HashSet<>();
-                Set<Note> currFundamentalNotes = new HashSet<>();
-                Set<Note> nextFundamentalNotes = new HashSet<>();
-                int upperBound = currFundFreqs.size() < nextFundFreqs.size() ? nextFundFreqs.size() : currFundFreqs.size();
-                for (int j = 0; j < upperBound; j++) {
-                    if (j < currFundFreqs.size()) {
-                        Note note = Note.roundFreqToNearestNote(currFundFreqs.get(j));
-                        currFundamentalNotes.add(note);
-                        sharedFundamentalNotes.add(note);
-                    }
-                    if (j < nextFundFreqs.size()) {
-                        Note note = Note.roundFreqToNearestNote(nextFundFreqs.get(j));
-                        nextFundamentalNotes.add(note);
-                        sharedFundamentalNotes.add(note);
-                    }
-                }
-                // if notes are equivalent then fundamental notes will be same size as freq lists
-                if (compareNoteSets(currFundamentalNotes, nextFundamentalNotes, sharedFundamentalNotes)) {
-                    // assume they are the same note, so mark next index for removal
-                    noteIndicesToRemove.add(nextIndex);
-                }
-            }
-        }
-        // merge any notes that are the same note with no silence between them
-        indicesOfNotes.removeIf(entry -> noteIndicesToRemove.contains(entry));
-        return indicesOfNotes;
-    }
-
-    /**
-     * Check that 3 given sets (current, next & shared notes) are equivalent.
-     * @param currFundamentalNotes
-     * @param nextFundamentalNotes
-     * @param sharedFundamentalNotes
-     * @return true if equivalent, false if not
-     */
-    private static boolean compareNoteSets(Set<Note> currFundamentalNotes, Set<Note> nextFundamentalNotes, Set<Note> sharedFundamentalNotes) {
-        if(currFundamentalNotes.size() == nextFundamentalNotes.size() && nextFundamentalNotes.size() == sharedFundamentalNotes.size()) {
-            // all must be the same size at this point
-            for(Note note : currFundamentalNotes) {
-                // if any notes don't match
-                if(!nextFundamentalNotes.contains(note) || !sharedFundamentalNotes.contains(note)) {
-                    return false;
-                }
-            }
-            // if all match
-            return true;
-        }
-        return false;
     }
 }

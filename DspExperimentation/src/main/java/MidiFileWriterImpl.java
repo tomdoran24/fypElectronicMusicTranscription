@@ -2,6 +2,9 @@ import javax.sound.midi.*;
 import javax.sound.midi.spi.MidiFileWriter;
 import java.io.*;
 
+/**
+ * Class implementing MidiFileWriter, code from StandardMidiFileWriter
+ */
 public class MidiFileWriterImpl extends MidiFileWriter {
     private static final int MThd_MAGIC = 1297377380;
     private static final int MTrk_MAGIC = 1297379947;

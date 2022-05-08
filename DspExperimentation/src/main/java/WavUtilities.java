@@ -6,10 +6,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Class for dealing with WAV files. Uses code from: http://www.labbookpages.co.uk/audio/javaWavFiles.html
+ */
 public class WavUtilities {
 
+    /**
+     * Method to generate a signal array from a WAV file.
+     *
+     * @param file WAV file
+     * @return signal array as list of lists of doubles (corresponding to 2 channels of amplitude values)
+     * @throws IOException
+     * @throws WavFileException
+     */
     public static double[][] getWavSignalListFromFile(File file) throws IOException, WavFileException {
-        // http://www.labbookpages.co.uk/audio/javaWavFiles.html
         WavFile wavFile = WavFile.openWavFile(file);
 
         // Create a buffer of 100 frames
@@ -48,27 +58,18 @@ public class WavUtilities {
         return audio;
     }
 
+    /**
+     * Method to return a single channel from a signal array.
+     *
+     * @param signal signal array
+     * @param channel channel to return
+     * @return single channel of signal array as array of doubles
+     */
     public static double[] getSingleChannelFromSignal(double[][] signal, int channel) {
         double[] channelSignal = new double[signal[0].length];
         for(int i = 0; i < signal[0].length; i++) {
             channelSignal[i] = signal[channel][i];
         }
         return channelSignal;
-    }
-
-    public static List<Double> signalArrayToList(double[] signal) {
-        List<Double> returnList = new ArrayList<>();
-        for(double d : signal) {
-            returnList.add(d);
-        }
-        return returnList;
-    }
-
-    public static double[] signalListToArray(List<Double> signal) {
-        double[] returnArray = new double[signal.size()];
-        for(double d : signal) {
-            returnArray[signal.indexOf(d)] = d;
-        }
-        return returnArray;
     }
 }
