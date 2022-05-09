@@ -1,12 +1,9 @@
 import com.github.psambit9791.wavfile.WavFileException;
-import com.sun.media.sound.StandardMidiFileWriter;
 
 import javax.sound.midi.*;
-import javax.sound.midi.spi.MidiFileWriter;
 import javax.sound.sampled.*;
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
 
 public class main {
 
